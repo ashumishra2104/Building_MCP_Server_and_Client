@@ -1,4 +1,4 @@
-# 🤖 Building MCP Servers — by Ashu Mishra
+# 🤖 Building MCP Servers and Clients — by Ashu Mishra
 
 > A hands-on collection of MCP (Model Context Protocol) servers built from scratch — designed for AI Product Management students and developers who want to give Claude real-world superpowers.
 
