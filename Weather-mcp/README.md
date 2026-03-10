@@ -54,3 +54,7 @@ MIT
 
 
 Last updated on: 2026-03-11 00:13:57
+
+
+## Project Scope
+This project demonstrates a production-ready MCP server implementation.
