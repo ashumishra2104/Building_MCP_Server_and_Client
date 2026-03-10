@@ -95,3 +95,5 @@ This project demonstrates a production-ready MCP server implementation.
 <!-- Minor update: Add project architecture diagram reference (placeholder) -->
 
 <!-- Minor update: Improve readme formatting with more emojis -->
+
+<!-- Minor update: Update license section with year 2026 -->
