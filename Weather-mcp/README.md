@@ -89,3 +89,5 @@ This project demonstrates a production-ready MCP server implementation.
 <!-- Minor update: Enhance error reporting for invalid location inputs -->
 
 <!-- Minor update: Add a section about future scaling possibilities -->
+
+<!-- Minor update: Clarify requirements for the FastMCP library -->
