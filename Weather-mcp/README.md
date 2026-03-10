@@ -73,3 +73,5 @@ This project demonstrates a production-ready MCP server implementation.
 <!-- Minor update: Include units of measurement (metric) in README -->
 
 <!-- Minor update: Add more detailed comments to geocoding logic -->
+
+<!-- Minor update: Improve variable naming for Open-Meteo response processing -->
