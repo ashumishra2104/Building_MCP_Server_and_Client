@@ -58,3 +58,8 @@ Last updated on: 2026-03-11 00:13:57
 
 ## Project Scope
 This project demonstrates a production-ready MCP server implementation.
+
+### Technical stack
+- Python 3.10+
+- FastMCP Framework
+- Open-Meteo API integration
