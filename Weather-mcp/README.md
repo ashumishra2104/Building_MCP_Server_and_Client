@@ -85,3 +85,5 @@ This project demonstrates a production-ready MCP server implementation.
 <!-- Minor update: Include expected output example in README -->
 
 <!-- Minor update: Add a note about the no-API-key benefit in tools documentation -->
+
+<!-- Minor update: Enhance error reporting for invalid location inputs -->
