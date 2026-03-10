@@ -67,3 +67,5 @@ This project demonstrates a production-ready MCP server implementation.
 
 > [!TIP]
 > For Windows users, ensure your execution policy allows running scripts in the virtual environment.
+
+<!-- Minor update: Add more city examples to weather tool docs -->
