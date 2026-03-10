@@ -81,3 +81,5 @@ This project demonstrates a production-ready MCP server implementation.
 <!-- Minor update: Document local testing procedures more clearly -->
 
 <!-- Minor update: Add troubleshooting section to README for common MCP errors -->
+
+<!-- Minor update: Include expected output example in README -->
