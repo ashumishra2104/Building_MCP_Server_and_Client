@@ -63,3 +63,7 @@ This project demonstrates a production-ready MCP server implementation.
 - Python 3.10+
 - FastMCP Framework
 - Open-Meteo API integration
+
+
+> [!TIP]
+> For Windows users, ensure your execution policy allows running scripts in the virtual environment.
