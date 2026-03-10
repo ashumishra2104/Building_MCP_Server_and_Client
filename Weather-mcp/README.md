@@ -71,3 +71,5 @@ This project demonstrates a production-ready MCP server implementation.
 <!-- Minor update: Add more city examples to weather tool docs -->
 
 <!-- Minor update: Include units of measurement (metric) in README -->
+
+<!-- Minor update: Add more detailed comments to geocoding logic -->
