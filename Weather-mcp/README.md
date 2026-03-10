@@ -77,3 +77,5 @@ This project demonstrates a production-ready MCP server implementation.
 <!-- Minor update: Improve variable naming for Open-Meteo response processing -->
 
 <!-- Minor update: Add link to Open-Meteo documentation in README -->
+
+<!-- Minor update: Document local testing procedures more clearly -->
