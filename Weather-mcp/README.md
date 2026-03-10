@@ -83,3 +83,5 @@ This project demonstrates a production-ready MCP server implementation.
 <!-- Minor update: Add troubleshooting section to README for common MCP errors -->
 
 <!-- Minor update: Include expected output example in README -->
+
+<!-- Minor update: Add a note about the no-API-key benefit in tools documentation -->
