@@ -1,0 +1,14 @@
+# Ignore Python virtual environment
+.venv/
+env/
+venv/
+__pycache__/
+*.pyc
+
+# Ignore environment variables
+.env
+
+# Ignore temporary files
+apify_output.txt
+*.log
+.DS_Store
