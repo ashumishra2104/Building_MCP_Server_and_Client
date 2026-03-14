@@ -1,5 +1,8 @@
 streamlit
 openai
-pymupdf 
-python-dotenv
 apify-client
+python-dotenv
+supabase
+weasyprint
+fitz
+PyMuPDF

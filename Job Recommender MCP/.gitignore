@@ -12,3 +12,7 @@ __pycache__/
 apify_output.txt
 *.log
 .DS_Store
+*.db
+*_Tailored_*.pdf
+check_supabase.py
+migrate_debug.py
