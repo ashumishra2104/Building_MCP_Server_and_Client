@@ -1,0 +1,7 @@
+libpango-1.0-0
+libpangoft2-1.0-0
+libglib2.0-0
+libjpeg-dev
+libopenjp2-7-dev
+libffi-dev
+shared-mime-info
