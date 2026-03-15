@@ -54,22 +54,14 @@ with st.sidebar:
     
     st.header("📊 Database Stats")
     try:
-        import sqlite3
-        import os
-        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-        DB_PATH = os.path.join(BASE_DIR, "jobs_repository.db")
-        if os.path.exists(DB_PATH):
-            conn = sqlite3.connect(DB_PATH)
-            cur = conn.cursor()
-            cur.execute("SELECT COUNT(*) FROM linkedin_jobs_v2")
-            l_count = cur.fetchone()[0]
-            cur.execute("SELECT COUNT(*) FROM naukri_jobs_v2")
-            n_count = cur.fetchone()[0]
-            st.write(f"📁 **LinkedIn Jobs cached:** {l_count}")
-            st.write(f"📁 **Naukri Jobs cached:** {n_count}")
-            conn.close()
+        from src.database import supabase as sb
+        if sb:
+            l_res = sb.table("linkedin_jobs_v2").select("*", count="exact").limit(1).execute()
+            n_res = sb.table("naukri_jobs_v2").select("*", count="exact").limit(1).execute()
+            st.write(f"📁 **LinkedIn Jobs cached:** {l_res.count}")
+            st.write(f"📁 **Naukri Jobs cached:** {n_res.count}")
         else:
-            st.write("Database not initialized yet.")
+            st.write("Database not connected.")
     except Exception as e:
         st.write("Stats unavailable.")
 
@@ -232,7 +224,7 @@ if uploaded_file:
                 if st.button(f"✨ Create Customised Resume", key=f"tailor_l_{i}"):
                     with st.spinner("Magic in progress... Tailoring your resume to this role."):
                         # Load template
-                        template_path = "Sample_resumes/resume_template.html"
+                        template_path = "resume_template.html"
                         try:
                             with open(template_path, "r") as f:
                                 html_template = f.read()
@@ -313,7 +305,7 @@ if uploaded_file:
                     
                     # 2. Tailoring
                     with st.spinner("Step 2/2: Tailoring your resume with GPT-4o..."):
-                        template_path = "Sample_resumes/resume_template.html"
+                        template_path = "resume_template.html"
                         try:
                             with open(template_path, "r") as f:
                                 html_template = f.read()
