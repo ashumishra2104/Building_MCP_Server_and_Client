@@ -1,56 +1,99 @@
-# Job Recommender & MCP Server
+# 💼 AI Job Recommender App
 
-An AI-powered Job Recommendation platform and Model Context Protocol (MCP) server that analyzes a user's resume, suggests necessary skill improvements, and automatically fetches relevant real-time job listings from LinkedIn and Naukri using Apify.
+> An AI-powered job recommendation and resume tailoring system — built using **Google Antigravity** as part of an AI Product Management course.
 
-## Features
+---
 
-- **Resume Analysis**: Upload a PDF resume to get an AI-generated summary.
-- **Skill Gap Detection**: AI identifies missing skills and certifications based on current industry standards.
-- **Future Roadmap**: Get an actionable roadmap to level up your career.
-- **Live Job Search**: Automatically extracts search keywords from your resume to fetch actual job listings from LinkedIn and Naukri.
-- **MCP Server**: Exposes job search functions (`get_linkedin_jobs` and `get_naukri_jobs`) to compatible AI clients (like Claude Desktop) through the Model Context Protocol (MCP).
+## 📋 Want to Build This Yourself?
 
-## Architecture
+A complete **Step-by-Step Creation Guide** is available with:
+- ✅ Exact prompts to paste into any AI IDE (Cursor / Antigravity / VS Code)
+- ✅ Plain English explanation for every section
+- ✅ Checkpoint prompts to test your work at each stage
+- ✅ Setup guides for all APIs and accounts needed
 
-- **Frontend**: Streamlit (`app.py`) for the web interface.
-- **AI Processing**: OpenAI (`gpt-4o-mini`) is used for text summarization, skill gap analysis, and keyword extraction.
-- **Scraping**: Apify Actors are used to dynamically scrape job listings from LinkedIn and Naukri.
-- **MCP Backend**: FastMCP (`mcp_server.py`) powers the MCP integration.
+👉 **[Open the Step-by-Step Creation Guide](./video_guide/Step_By_Step_Creation_Guide.md)**
 
-## Installation & Setup
+---
 
-1. **Clone the repository** (or navigate to this folder).
-2. **Install dependencies**:
+## 🚀 What This App Does
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+| Feature | Description |
+|---------|-------------|
+| 📄 Resume Analysis | Upload a PDF — GPT-4o-mini summarises your resume, finds skill gaps, and builds a career roadmap |
+| 🔍 Live Job Search | Searches LinkedIn and Naukri in real-time using Apify web scrapers |
+| ✍️ Resume Tailoring | GPT-4o rewrites your resume to match any specific job description |
+| 📥 PDF Export | Downloads the tailored resume as a formatted PDF via WeasyPrint |
+| 🗄️ Job Caching | Saves all fetched jobs to Supabase (cloud) with SQLite as local fallback |
+| 🔌 MCP Server | Exposes job search as tools for AI agents via FastMCP |
 
-3. **Environment Setup**: Allow the app to authenticate to API services by creating a `.env` file in the root of the project with your API keys:
+---
 
-   ```env
-   OPENAI_API_KEY=your_openai_api_key
-   APIFY_API_TOKEN=your_apify_api_token
-   ```
+## 🏗️ Project Structure
 
-## Usage
+```
+Job_Recommender_App/
+│
+├── app.py                    ← Streamlit web app (main entry point)
+├── mcp_server.py             ← FastMCP server — exposes job search to AI agents
+├── resume_template.html      ← HTML template used for tailored resume PDF
+├── requirements.txt          ← Python dependencies
+├── packages.txt              ← System dependencies (for Streamlit Cloud)
+├── .gitignore                ← Excludes .env, *.db, tailored PDFs
+│
+├── src/
+│   ├── helper.py             ← PDF reader + OpenAI GPT + WeasyPrint PDF export
+│   ├── job_api.py            ← Apify scrapers for LinkedIn and Naukri
+│   └── database.py           ← Supabase (primary) + SQLite (fallback) storage
+│
+└── video_guide/
+    └── Step_By_Step_Creation_Guide.md  ← Full guide to recreate this project
+```
 
-### Run the Web Interface (Streamlit)
+---
 
-Start the Streamlit web application:
+## ⚙️ Tech Stack
+
+`Streamlit` · `OpenAI GPT-4o / GPT-4o-mini` · `Apify` · `Supabase` · `SQLite` · `WeasyPrint` · `FastMCP` · `PyMuPDF` · `Python 3.11`
+
+---
+
+## 🔑 Environment Variables Required
+
+Create a `.env` file in this folder with:
+
+```env
+OPENAI_API_KEY=your_openai_api_key
+APIFY_API_TOKEN=your_apify_api_token
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_KEY=your_supabase_anon_key
+```
+
+> ⚠️ Never commit your `.env` file — it is already listed in `.gitignore`
+
+---
+
+## ▶️ Quick Start
 
 ```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the web app
 streamlit run app.py
+
+# Run the MCP server (for AI agents)
+python mcp_server.py
 ```
 
-### Run the MCP Server
+---
 
-To start the Model Context Protocol (MCP) server so that AI clients can use your job search capabilities:
+## 📖 Full Guide
 
-```bash
-npx -y @modelcontextprotocol/inspector ./venv/bin/python mcp_server.py
-```
+For a complete walkthrough — including how every file was built, what prompts were used, and how to deploy on Streamlit Cloud:
 
-## Disclaimer
+👉 **[Step_By_Step_Creation_Guide.md](./video_guide/Step_By_Step_Creation_Guide.md)**
 
-Note: Ensure your Apify and OpenAI accounts have sufficient credits or a valid billing tier, as scraping and LLM generation consumes API credits.
+---
+
+> Built with [Google Antigravity](https://antigravity.google) · Part of the [Building MCP Servers and Clients](../) repository by [Ashu Mishra](https://github.com/ashumishra2104)
