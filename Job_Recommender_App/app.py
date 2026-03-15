@@ -1,8 +1,11 @@
 import streamlit.elements.layouts
 import streamlit as st
+import os
 from src.helper import extract_text_from_pdf, ask_openai, tailor_resume, generate_resume_pdf
 from src.job_api import fetch_linkedin_jobs, fetch_naukri_jobs
 from src.database import init_db
+
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Initialize database
 init_db()
@@ -224,7 +227,7 @@ if uploaded_file:
                 if st.button(f"✨ Create Customised Resume", key=f"tailor_l_{i}"):
                     with st.spinner("Magic in progress... Tailoring your resume to this role."):
                         # Load template
-                        template_path = "resume_template.html"
+                        template_path = os.path.join(APP_DIR, "resume_template.html")
                         try:
                             with open(template_path, "r") as f:
                                 html_template = f.read()
@@ -305,7 +308,7 @@ if uploaded_file:
                     
                     # 2. Tailoring
                     with st.spinner("Step 2/2: Tailoring your resume with GPT-4o..."):
-                        template_path = "resume_template.html"
+                        template_path = os.path.join(APP_DIR, "resume_template.html")
                         try:
                             with open(template_path, "r") as f:
                                 html_template = f.read()
