@@ -60,6 +60,82 @@ flowchart TD
 
 ---
 
+## User Flow
+
+```mermaid
+flowchart TD
+    Start([🚀 Open Streamlit App]) --> EnterTopic[Enter a Topic]
+    EnterTopic --> ClickGenerate[Click Generate Insight & Script]
+    ClickGenerate --> Searching[🔍 Searching web via Tavily...]
+    Searching --> InsightReady{Insights found?}
+
+    InsightReady -->|No| Warn1[⚠️ Show warning]
+    Warn1 --> EnterTopic
+
+    InsightReady -->|Yes| ShowInsight[📚 Display AI Summary]
+    ShowInsight --> ScriptPrompt{Generate script?}
+
+    ScriptPrompt -->|No| EnterTopic
+    ScriptPrompt -->|Yes| Scripting[✍️ Generating script via OpenAI...]
+    Scripting --> ScriptReady{Script generated?}
+
+    ScriptReady -->|No| Warn2[⚠️ Show warning]
+    ScriptReady -->|Yes| ShowScript[🎥 Display Script + Download button]
+    ShowScript --> VideoPrompt{Generate AI video?}
+
+    VideoPrompt -->|No| EnterTopic
+    VideoPrompt -->|Yes| VideoGen[🎬 Creating video via D-ID API...]
+    VideoGen --> VideoReady{Video ready?}
+
+    VideoReady -->|Error| Warn3[❌ Show error]
+    VideoReady -->|Yes| PlayVideo[▶️ Display Video in Browser]
+    PlayVideo --> EnterTopic
+```
+
+---
+
+## Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant App as Streamlit App
+    participant Logic as logic.py
+    participant Tavily as Tavily Search API
+    participant OpenAI as OpenAI API
+    participant DID as D-ID API
+
+    User->>App: Enter topic & click Generate
+    App->>Logic: get_realtime_info(topic)
+    Logic->>Tavily: search(query, depth=advanced)
+    Tavily-->>Logic: top 5 search results
+    Logic->>OpenAI: Summarise results (gpt-4o-mini)
+    OpenAI-->>Logic: AI summary
+    Logic-->>App: refined_info
+    App-->>User: Display AI Summary
+
+    User->>App: Select Yes for script
+    App->>Logic: generate_video_script(topic, refined_info)
+    Logic->>OpenAI: Write 100-120 word video script
+    OpenAI-->>Logic: video script
+    Logic-->>App: script text
+    App-->>User: Display Script + Download button
+
+    User->>App: Select Yes for video
+    App->>Logic: create_did_video(script)
+    Logic->>DID: POST /talks (source_url + script text)
+    DID-->>Logic: talk_id
+    loop Poll every 3s (max 30x)
+        Logic->>DID: GET /talks/{talk_id}
+        DID-->>Logic: status (created / started / done)
+    end
+    DID-->>Logic: result_url (video URL)
+    Logic-->>App: video URL
+    App-->>User: Play AI talking-head video
+```
+
+---
+
 ## Project Structure
 
 ```text
