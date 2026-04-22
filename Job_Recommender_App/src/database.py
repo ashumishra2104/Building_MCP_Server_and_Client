@@ -113,6 +113,38 @@ def save_jobs_to_db(source, search_query, jobs_list):
     except Exception as e:
         print(f"SQLite error: {e}")
 
+def get_jobs_from_db(source, search_query=None, limit=100):
+    """Fetch jobs from Supabase (primary) or SQLite fallback."""
+    table_name = "linkedin_jobs_v2" if source == "linkedin" else "naukri_jobs_v2"
+
+    if supabase:
+        try:
+            query = supabase.table(table_name).select("*")
+            if search_query:
+                query = query.ilike("title", f"%{search_query}%")
+            result = query.limit(limit).order("fetched_at", desc=True).execute()
+            return [json.loads(row["raw_data"]) for row in result.data]
+        except Exception as e:
+            print(f"Supabase fetch error: {e}")
+
+    import sqlite3
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    if search_query:
+        cursor.execute(
+            f"SELECT raw_data FROM {table_name} WHERE title LIKE ? ORDER BY fetched_at DESC LIMIT ?",
+            (f"%{search_query}%", limit),
+        )
+    else:
+        cursor.execute(
+            f"SELECT raw_data FROM {table_name} ORDER BY fetched_at DESC LIMIT ?",
+            (limit,),
+        )
+    rows = cursor.fetchall()
+    conn.close()
+    return [json.loads(row[0]) for row in rows]
+
+
 def get_all_keys(source):
     """Utility to see unique keys from local SQLite."""
     import sqlite3
