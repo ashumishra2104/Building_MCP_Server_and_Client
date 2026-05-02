@@ -1,9 +1,9 @@
 import streamlit as st
 import os
 from src.helper import extract_text_from_pdf, ask_openai
-from src.job_api import fetch_linkedin_jobs, fetch_naukri_jobs
+from src.job_api import fetch_linkedin_jobs, fetch_naukri_jobs, fetch_indeed_jobs
 from src.database import init_db
-from src.ui_components import JOB_CARD_CSS, render_linkedin_card, render_naukri_card
+from src.ui_components import JOB_CARD_CSS, render_linkedin_card, render_naukri_card, render_indeed_card
 
 APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -25,8 +25,10 @@ with st.sidebar:
         if sb:
             l_res = sb.table("linkedin_jobs_v2").select("*", count="exact").limit(1).execute()
             n_res = sb.table("naukri_jobs_v2").select("*", count="exact").limit(1).execute()
+            i_res = sb.table("indeed_jobs").select("*", count="exact").limit(1).execute()
             st.write(f"📁 **LinkedIn Jobs cached:** {l_res.count}")
             st.write(f"📁 **Naukri Jobs cached:** {n_res.count}")
+            st.write(f"📁 **Indeed Jobs cached:** {i_res.count}")
         else:
             st.write("Database not connected.")
     except Exception:
@@ -58,7 +60,7 @@ if not st.session_state.get("authenticated"):
 # ── Main content ───────────────────────────────────────────────────────────────
 st.markdown(JOB_CARD_CSS, unsafe_allow_html=True)
 st.title("💼 AI Job Recommender System")
-st.markdown("Upload your resume to get AI-powered job recommendations from LinkedIn and Naukri.")
+st.markdown("Upload your resume to get AI-powered job recommendations from LinkedIn, Naukri and Indeed.")
 
 uploaded_file = st.file_uploader("Upload your resume (PDF)", type=["pdf"])
 
@@ -112,7 +114,7 @@ if uploaded_file:
 
     st.markdown("---")
     st.subheader("🔍 Fetch Fresh Job Recommendations (via Apify)")
-    st.caption("This fetches live jobs from LinkedIn and Naukri using the Apify API.")
+    st.caption("This fetches live jobs from LinkedIn, Naukri and Indeed using the Apify API.")
 
     if st.button("🧲 Get Job Recommendations"):
         with st.spinner("Analysing profile for best search results..."):
@@ -130,7 +132,8 @@ if uploaded_file:
 
         with st.spinner(f"Fetching jobs for: {linkedin_query} & {naukri_query}"):
             st.session_state['linkedin_jobs'] = fetch_linkedin_jobs(linkedin_query, rows=60)
-            st.session_state['naukri_jobs'] = fetch_naukri_jobs(naukri_query, rows=60)
+            st.session_state['naukri_jobs']   = fetch_naukri_jobs(naukri_query, rows=60)
+            st.session_state['indeed_jobs']   = fetch_indeed_jobs(linkedin_query, location="India", country="IN", rows=50)
 
     if 'linkedin_jobs' in st.session_state:
         st.markdown("---")
@@ -149,3 +152,12 @@ if uploaded_file:
             st.warning("No Naukri jobs found. Try adjusting your profile summary.")
         for i, job in enumerate(st.session_state['naukri_jobs']):
             render_naukri_card(job, i, resume_text, candidate_name, key_prefix="n")
+
+    if 'indeed_jobs' in st.session_state:
+        st.markdown("---")
+        st.header("🔵 Indeed Jobs (India)")
+        st.info(f"🔍 Search: **{st.session_state.get('linkedin_query', '')}**")
+        if not st.session_state['indeed_jobs']:
+            st.warning("No Indeed jobs found. Try refining your resume.")
+        for i, job in enumerate(st.session_state['indeed_jobs']):
+            render_indeed_card(job, i, resume_text, candidate_name, key_prefix="i")

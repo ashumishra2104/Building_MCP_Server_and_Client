@@ -89,6 +89,30 @@ def fetch_full_details_batched(urls):
         return []
 
 
+@st.cache_data(show_spinner=False)
+def fetch_indeed_jobs(search_query, location="India", country="IN", rows=50):
+    run_input = {
+        "country": country,
+        "followApplyRedirects": False,
+        "location": location,
+        "maxItemsPerSearch": rows,
+        "parseCompanyDetails": False,
+        "position": search_query,
+        "saveOnlyUniqueItems": True,
+    }
+    try:
+        run = apify_client.actor("hMvNSpz3JnHgl5jkh").call(run_input=run_input)
+        jobs = list(apify_client.dataset(run["defaultDatasetId"]).iterate_items())
+        save_jobs_to_db("indeed", search_query, jobs)
+        return jobs
+    except ApifyApiError as e:
+        _show_apify_error("Indeed", str(e))
+        return []
+    except Exception as e:
+        st.error(f"Unexpected error fetching Indeed jobs: {e}")
+        return []
+
+
 def _show_apify_error(source: str, raw_msg: str):
     is_paid = "rent" in raw_msg.lower() or "trial" in raw_msg.lower() or "redacted" in raw_msg.lower()
     if is_paid:

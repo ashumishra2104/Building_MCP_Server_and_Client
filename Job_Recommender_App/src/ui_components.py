@@ -18,6 +18,7 @@ JOB_CARD_CSS = """
 }
 .linkedin-card { border-left: 5px solid #0077b5; }
 .naukri-card   { border-left: 5px solid #ff751a; }
+.indeed-card   { border-left: 5px solid #2557a7; }
 
 .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
 .job-title   { font-size: 17px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; }
@@ -221,3 +222,83 @@ def render_naukri_card(job, idx, resume_text, candidate_name, key_prefix="n"):
                         st.error("Failed to fetch full description.")
         else:
             st.markdown(f"<div class='full-jd-box'>{clean_html(current_jd)}</div>", unsafe_allow_html=True)
+
+
+def render_indeed_card(job, idx, resume_text, candidate_name, key_prefix="i"):
+    from src.helper import tailor_resume, generate_resume_pdf
+    import json as _json
+
+    job_id    = str(job.get('id', idx))
+    job_url   = job.get('externalApplyLink') or job.get('url') or "#"
+    view_url  = job.get('url') or "#"
+    company   = job.get('company') or "Unknown Company"
+    avatar    = company[0].upper()
+    title     = job.get('positionName') or "N/A"
+    location  = job.get('location') or ""
+    posted    = job.get('postedAt') or "Recently"
+    salary    = job.get('salary') or "Not Disclosed"
+    rating    = job.get('rating') or 0
+    job_types = job.get('jobType') or []
+    if isinstance(job_types, str):
+        try:
+            job_types = _json.loads(job_types)
+        except Exception:
+            job_types = [job_types]
+    job_type_str = ", ".join(job_types) if job_types else "Full-time"
+
+    rating_html = f'<span class="rating-badge">★ {rating}</span>' if rating else ""
+    full_desc   = job.get('description') or ""
+    desc_preview = full_desc[:200] + "..." if len(full_desc) > 200 else full_desc
+
+    st.markdown(f"""<div class="job-card indeed-card">
+<div style="display:flex;gap:14px;">
+<div class="avatar">{avatar}</div>
+<div style="flex-grow:1;">
+<div class="card-header">
+  <div>
+    <div class="job-title">{title}</div>
+    <div class="company-info">{company} {rating_html}</div>
+  </div>
+  <span class="badge badge-easy">{job_type_str}</span>
+</div>
+<div class="meta-row">
+  <div class="meta-item">📍 {location}</div>
+  <div class="meta-item">💰 {salary}</div>
+  <div class="meta-item">🕒 {posted}</div>
+</div>
+<div class="description-preview">{desc_preview}</div>
+<div class="card-footer">
+  <a href="{view_url}" target="_blank" class="view-link">🔗 View on Indeed</a>
+  <a href="{job_url}" target="_blank" class="apply-btn">Apply Now</a>
+</div>
+</div></div></div>""", unsafe_allow_html=True)
+
+    with st.expander("Tailor Resume for this Job"):
+        if resume_text:
+            if st.button("✨ Create Customised Resume", key=f"tailor_{key_prefix}_{job_id}_{idx}"):
+                with st.spinner("Tailoring your resume to this role..."):
+                    template_path = os.path.join(APP_DIR, "resume_template.html")
+                    try:
+                        with open(template_path) as f:
+                            html_template = f.read()
+                        tailored_html = tailor_resume(resume_text, full_desc, html_template)
+                        safe_company  = "".join(c for c in company if c.isalnum())
+                        pdf_filename  = f"{candidate_name.replace(' ', '_')}_Tailored_{safe_company}.pdf"
+                        if tailored_html:
+                            if generate_resume_pdf(tailored_html, pdf_filename):
+                                st.success(f"✅ Resume tailored for {company}!")
+                                with open(pdf_filename, "rb") as f:
+                                    st.download_button("📩 Download PDF", f, pdf_filename,
+                                                       mime="application/pdf",
+                                                       key=f"dl_{key_prefix}_{job_id}_{idx}")
+                            else:
+                                st.error("PDF generation failed. Check WeasyPrint dependencies.")
+                        else:
+                            st.error("Failed to tailor resume content.")
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+        else:
+            st.info("Upload your resume on the main page to enable tailoring.")
+
+    with st.expander("Read Full Description"):
+        st.markdown(f"<div class='full-jd-box'>{full_desc}</div>", unsafe_allow_html=True)
