@@ -16,3 +16,4 @@ apify_output.txt
 *_Tailored_*.pdf
 check_supabase.py
 migrate_debug.py
+supabase/.temp/
