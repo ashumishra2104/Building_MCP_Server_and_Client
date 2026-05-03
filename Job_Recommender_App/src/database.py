@@ -269,6 +269,41 @@ def _get_indeed_from_db(search_query=None, limit=100):
     return [json.loads(row[0]) for row in rows]
 
 
+def get_linkedin_posts_from_db(search_query=None, limit=200):
+    """Fetch LinkedIn hiring posts from Supabase, ordered by most recent."""
+    if supabase:
+        try:
+            query = supabase.table("linkedin_posts").select("*")
+            if search_query:
+                query = query.ilike("text", f"%{search_query}%")
+            result = query.limit(limit).order("posted_at", desc=True).execute()
+            return result.data or []
+        except Exception as e:
+            print(f"Supabase fetch error (linkedin_posts): {e}")
+
+    import sqlite3
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        if search_query:
+            cursor.execute(
+                "SELECT urn, author_name, author_headline, author_profile_url, text, url, posted_at, time_since_posted, hashtag_source FROM indeed_jobs_local WHERE text LIKE ? ORDER BY posted_at DESC LIMIT ?",
+                (f"%{search_query}%", limit),
+            )
+        else:
+            cursor.execute(
+                "SELECT urn, author_name, author_headline, author_profile_url, text, url, posted_at, time_since_posted, hashtag_source FROM indeed_jobs_local ORDER BY posted_at DESC LIMIT ?",
+                (limit,),
+            )
+        cols = ["urn","author_name","author_headline","author_profile_url","text","url","posted_at","time_since_posted","hashtag_source"]
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(zip(cols, r)) for r in rows]
+    except Exception as e:
+        print(f"SQLite error (linkedin_posts): {e}")
+        return []
+
+
 def get_all_keys(source):
     """Utility to see unique keys from local SQLite."""
     import sqlite3

@@ -19,6 +19,7 @@ JOB_CARD_CSS = """
 .linkedin-card { border-left: 5px solid #0077b5; }
 .naukri-card   { border-left: 5px solid #ff751a; }
 .indeed-card   { border-left: 5px solid #2557a7; }
+.post-card     { border-left: 5px solid #0a66c2; background: #f6f9fc; }
 
 .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
 .job-title   { font-size: 17px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; }
@@ -302,3 +303,42 @@ def render_indeed_card(job, idx, resume_text, candidate_name, key_prefix="i"):
 
     with st.expander("Read Full Description"):
         st.markdown(f"<div class='full-jd-box'>{full_desc}</div>", unsafe_allow_html=True)
+
+
+def render_linkedin_post_card(post):
+    author      = post.get("author_name") or "Unknown"
+    headline    = post.get("author_headline") or ""
+    profile_url = post.get("author_profile_url") or "#"
+    text        = post.get("text") or ""
+    url         = post.get("url") or "#"
+    posted      = post.get("time_since_posted") or ""
+    avatar      = author[0].upper() if author else "?"
+    preview     = text[:280] + "…" if len(text) > 280 else text
+
+    st.markdown(f"""
+<div class="job-card post-card">
+  <div style="display:flex;gap:14px;align-items:flex-start;">
+    <div class="avatar" style="background:#e8f0fe;color:#0a66c2;">{avatar}</div>
+    <div style="flex-grow:1;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div class="job-title" style="color:#0a66c2;">
+            <a href="{profile_url}" target="_blank" style="color:#0a66c2;text-decoration:none;">{author}</a>
+          </div>
+          <div style="font-size:13px;color:#586069;margin-bottom:8px;">{headline[:90]}{"…" if len(headline)>90 else ""}</div>
+        </div>
+        <div style="font-size:12px;color:#888;white-space:nowrap;margin-left:10px;">🕒 {posted}</div>
+      </div>
+      <div style="font-size:13px;color:#333;line-height:1.6;white-space:pre-wrap;">{preview}</div>
+      <div class="card-footer" style="margin-top:12px;">
+        <a href="{profile_url}" target="_blank" class="view-link">👤 View Profile</a>
+        <a href="{url}" target="_blank" class="apply-btn" style="background:#0a66c2;">🔗 View Post</a>
+      </div>
+    </div>
+  </div>
+</div>""", unsafe_allow_html=True)
+
+    if len(text) > 280:
+        with st.expander("Read full post", expanded=False):
+            st.markdown(f"<div style='font-size:13px;line-height:1.7;white-space:pre-wrap;color:#333;'>{text}</div>",
+                        unsafe_allow_html=True)

@@ -1,6 +1,6 @@
 import streamlit as st
-from src.database import get_jobs_from_db
-from src.ui_components import JOB_CARD_CSS, render_linkedin_card, render_naukri_card, render_indeed_card
+from src.database import get_jobs_from_db, get_linkedin_posts_from_db
+from src.ui_components import JOB_CARD_CSS, render_linkedin_card, render_naukri_card, render_indeed_card, render_linkedin_post_card
 from src.location_utils import get_available_cities, job_matches_cities
 
 JOBS_PER_PAGE = 10
@@ -21,9 +21,11 @@ with st.sidebar:
             l_res = sb.table("linkedin_jobs_v2").select("*", count="exact").limit(1).execute()
             n_res = sb.table("naukri_jobs_v2").select("*", count="exact").limit(1).execute()
             i_res = sb.table("indeed_jobs").select("*", count="exact").limit(1).execute()
+            p_res = sb.table("linkedin_posts").select("*", count="exact").limit(1).execute()
             st.write(f"📁 **LinkedIn Jobs:** {l_res.count}")
             st.write(f"📁 **Naukri Jobs:** {n_res.count}")
             st.write(f"📁 **Indeed Jobs:** {i_res.count}")
+            st.write(f"📢 **LinkedIn Posts:** {p_res.count}")
     except Exception:
         st.write("Stats unavailable.")
 
@@ -48,9 +50,14 @@ if "db_indeed_jobs" not in st.session_state:
     with st.spinner("Loading Indeed jobs..."):
         st.session_state["db_indeed_jobs"] = get_jobs_from_db("indeed", limit=500)
 
-linkedin_jobs = st.session_state["db_linkedin_jobs"]
-naukri_jobs   = st.session_state["db_naukri_jobs"]
-indeed_jobs   = st.session_state["db_indeed_jobs"]
+if "db_linkedin_posts" not in st.session_state:
+    with st.spinner("Loading LinkedIn posts..."):
+        st.session_state["db_linkedin_posts"] = get_linkedin_posts_from_db(limit=200)
+
+linkedin_jobs   = st.session_state["db_linkedin_jobs"]
+naukri_jobs     = st.session_state["db_naukri_jobs"]
+indeed_jobs     = st.session_state["db_indeed_jobs"]
+linkedin_posts  = st.session_state["db_linkedin_posts"]
 
 # ── Build city list from ALL loaded jobs (self-updating) ───────────────────────
 all_jobs_flat = linkedin_jobs + naukri_jobs + indeed_jobs
@@ -75,7 +82,7 @@ with col_city:
 col_refresh, col_clear = st.columns([1, 5])
 with col_refresh:
     if st.button("🔄 Refresh DB"):
-        for key in ("db_linkedin_jobs", "db_naukri_jobs", "db_indeed_jobs", "available_cities"):
+        for key in ("db_linkedin_jobs", "db_naukri_jobs", "db_indeed_jobs", "db_linkedin_posts", "available_cities"):
             st.session_state.pop(key, None)
         st.rerun()
 with col_clear:
@@ -190,12 +197,22 @@ def show_paginated(jobs, source, key_prefix):
             st.rerun()
 
 
+# ── Posts text filter (separate from job title filter) ────────────────────────
+post_text_query = title_query  # reuse the title filter box for post text search
+
+filtered_posts = linkedin_posts
+if post_text_query:
+    q = post_text_query.lower()
+    filtered_posts = [p for p in linkedin_posts if q in (p.get("text") or "").lower()
+                      or q in (p.get("author_name") or "").lower()]
+
 # ── Source tabs ────────────────────────────────────────────────────────────────
-tab_naukri, tab_linkedin, tab_indeed, tab_all = st.tabs([
+tab_naukri, tab_linkedin, tab_indeed, tab_all, tab_posts = st.tabs([
     f"💼 Naukri  ({len(filtered_naukri)})",
     f"🏢 LinkedIn  ({len(filtered_linkedin)})",
     f"🔵 Indeed  ({len(filtered_indeed)})",
     f"🌐 All  ({len(filtered_all)})",
+    f"📢 Posts  ({len(filtered_posts)})",
 ])
 
 with tab_naukri:
@@ -209,3 +226,59 @@ with tab_indeed:
 
 with tab_all:
     show_paginated(filtered_all, "all", key_prefix="sa")
+
+with tab_posts:
+    if not filtered_posts:
+        st.info("No LinkedIn posts found. Try refreshing the DB or adjusting the search filter.")
+    else:
+        POSTS_PER_PAGE = 10
+        total_posts = len(filtered_posts)
+        total_post_pages = max(1, (total_posts + POSTS_PER_PAGE - 1) // POSTS_PER_PAGE)
+
+        if "page_posts" not in st.session_state:
+            st.session_state["page_posts"] = 1
+
+        post_sig = post_text_query or ""
+        if st.session_state.get("sig_posts") != post_sig:
+            st.session_state["page_posts"] = 1
+            st.session_state["sig_posts"] = post_sig
+
+        post_page = max(1, min(st.session_state["page_posts"], total_post_pages))
+        st.session_state["page_posts"] = post_page
+
+        p_start = (post_page - 1) * POSTS_PER_PAGE
+        p_end   = min(p_start + POSTS_PER_PAGE, total_posts)
+        st.caption(f"Showing **{p_start + 1}–{p_end}** of **{total_posts}** posts  •  Page {post_page} of {total_post_pages}")
+
+        for post in filtered_posts[p_start:p_end]:
+            render_linkedin_post_card(post)
+
+        # Pagination bar
+        st.markdown("---")
+        max_btns = 5
+        half     = max_btns // 2
+        pp_start = max(1, post_page - half)
+        pp_end   = min(total_post_pages, pp_start + max_btns - 1)
+        pp_start = max(1, pp_end - max_btns + 1)
+        visible  = list(range(pp_start, pp_end + 1))
+
+        btn_cols = st.columns([1.5] + [0.6] * len(visible) + [1.5])
+        with btn_cols[0]:
+            if st.button("◀ Prev", key="prev_posts", disabled=(post_page <= 1)):
+                st.session_state["page_posts"] = post_page - 1
+                st.rerun()
+        for i, p in enumerate(visible):
+            with btn_cols[i + 1]:
+                if p == post_page:
+                    st.markdown(
+                        f"<div style='text-align:center;background:#0a66c2;color:white;"
+                        f"border-radius:6px;padding:5px 0;font-weight:700;'>{p}</div>",
+                        unsafe_allow_html=True)
+                else:
+                    if st.button(str(p), key=f"pg_posts_{p}"):
+                        st.session_state["page_posts"] = p
+                        st.rerun()
+        with btn_cols[-1]:
+            if st.button("Next ▶", key="next_posts", disabled=(post_page >= total_post_pages)):
+                st.session_state["page_posts"] = post_page + 1
+                st.rerun()
