@@ -4,4 +4,4 @@ apify-client
 python-dotenv
 supabase
 weasyprint
-pymupdf
+pymupdfrequests

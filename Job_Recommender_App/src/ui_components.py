@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import re
+from urllib.parse import urlparse, parse_qs, unquote_plus
 
 APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -305,6 +306,18 @@ def render_indeed_card(job, idx, resume_text, candidate_name, key_prefix="i"):
         st.markdown(f"<div class='full-jd-box'>{full_desc}</div>", unsafe_allow_html=True)
 
 
+def normalize_hashtag_source(source: str) -> str:
+    """Convert hashtag_source (URL or old +format) to a readable '#tag #tag' label."""
+    if not source:
+        return ""
+    if source.startswith("http"):
+        qs = parse_qs(urlparse(source).query)
+        raw = qs.get("keywords", [""])[0]
+        return unquote_plus(raw).replace("%23", "#")
+    # Old format: 'hiring+productmanager+india'
+    return " ".join(f"#{w}" for w in source.replace("-", " ").split("+"))
+
+
 def render_linkedin_post_card(post):
     author      = post.get("author_name") or "Unknown"
     headline    = post.get("author_headline") or ""
@@ -312,8 +325,10 @@ def render_linkedin_post_card(post):
     text        = post.get("text") or ""
     url         = post.get("url") or "#"
     posted      = post.get("time_since_posted") or ""
+    keyword     = normalize_hashtag_source(post.get("hashtag_source") or "")
     avatar      = author[0].upper() if author else "?"
     preview     = text[:280] + "…" if len(text) > 280 else text
+    kw_badge    = f'<span style="background:#e8f0fe;color:#0a66c2;font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px;white-space:nowrap;">{keyword}</span>' if keyword else ""
 
     st.markdown(f"""
 <div class="job-card post-card">
@@ -325,11 +340,12 @@ def render_linkedin_post_card(post):
           <div class="job-title" style="color:#0a66c2;">
             <a href="{profile_url}" target="_blank" style="color:#0a66c2;text-decoration:none;">{author}</a>
           </div>
-          <div style="font-size:13px;color:#586069;margin-bottom:8px;">{headline[:90]}{"…" if len(headline)>90 else ""}</div>
+          <div style="font-size:13px;color:#586069;margin-bottom:6px;">{headline[:90]}{"…" if len(headline)>90 else ""}</div>
+          {kw_badge}
         </div>
         <div style="font-size:12px;color:#888;white-space:nowrap;margin-left:10px;">🕒 {posted}</div>
       </div>
-      <div style="font-size:13px;color:#333;line-height:1.6;white-space:pre-wrap;">{preview}</div>
+      <div style="font-size:13px;color:#333;line-height:1.6;white-space:pre-wrap;margin-top:10px;">{preview}</div>
       <div class="card-footer" style="margin-top:12px;">
         <a href="{profile_url}" target="_blank" class="view-link">👤 View Profile</a>
         <a href="{url}" target="_blank" class="apply-btn" style="background:#0a66c2;">🔗 View Post</a>

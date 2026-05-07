@@ -304,6 +304,61 @@ def get_linkedin_posts_from_db(search_query=None, limit=200):
         return []
 
 
+def save_linkedin_posts_to_db(posts_list):
+    """Save LinkedIn posts to Supabase with 15-day filter and URN dedup."""
+    from datetime import datetime, timezone, timedelta
+
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=15)
+
+    records = []
+    seen_urns = set()
+    for post in posts_list:
+        urn = post.get("urn")
+        if not urn or urn in seen_urns:
+            continue
+        seen_urns.add(urn)
+
+        iso_date = post.get("postedAtISO")
+        if iso_date:
+            try:
+                post_dt = datetime.fromisoformat(iso_date.replace("Z", "+00:00"))
+                if post_dt < cutoff:
+                    continue
+            except Exception:
+                pass
+
+        if post.get("isRepost"):
+            continue
+
+        records.append({
+            "urn":               urn,
+            "author_name":       post.get("authorName"),
+            "author_headline":   post.get("authorHeadline"),
+            "author_profile_url": post.get("authorProfileUrl"),
+            "text":              post.get("text"),
+            "url":               post.get("url"),
+            "posted_at":         iso_date,
+            "time_since_posted": post.get("timeSincePosted"),
+            "is_repost":         False,
+            "author_type":       post.get("authorType"),
+            "hashtag_source":    post.get("inputUrl"),
+            "scraped_at":        now.isoformat(),
+        })
+
+    if not records:
+        return 0
+
+    if supabase:
+        try:
+            supabase.table("linkedin_posts").upsert(records, on_conflict="urn").execute()
+            print(f"Saved {len(records)} LinkedIn posts to Supabase")
+            return len(records)
+        except Exception as e:
+            print(f"Supabase error (linkedin_posts save): {e}")
+    return 0
+
+
 def get_all_keys(source):
     """Utility to see unique keys from local SQLite."""
     import sqlite3

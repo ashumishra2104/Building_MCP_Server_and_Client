@@ -1,6 +1,6 @@
 import streamlit as st
 from src.database import get_jobs_from_db, get_linkedin_posts_from_db
-from src.ui_components import JOB_CARD_CSS, render_linkedin_card, render_naukri_card, render_indeed_card, render_linkedin_post_card
+from src.ui_components import JOB_CARD_CSS, render_linkedin_card, render_naukri_card, render_indeed_card, render_linkedin_post_card, normalize_hashtag_source
 from src.location_utils import get_available_cities, job_matches_cities
 
 JOBS_PER_PAGE = 10
@@ -197,14 +197,15 @@ def show_paginated(jobs, source, key_prefix):
             st.rerun()
 
 
-# ── Posts text filter (separate from job title filter) ────────────────────────
-post_text_query = title_query  # reuse the title filter box for post text search
+# ── Posts text filter ─────────────────────────────────────────────────────────
+post_text_query = title_query  # reuse the title filter box
 
 filtered_posts = linkedin_posts
 if post_text_query:
     q = post_text_query.lower()
     filtered_posts = [p for p in linkedin_posts if q in (p.get("text") or "").lower()
-                      or q in (p.get("author_name") or "").lower()]
+                      or q in (p.get("author_name") or "").lower()
+                      or q in normalize_hashtag_source(p.get("hashtag_source") or "").lower()]
 
 # ── Source tabs ────────────────────────────────────────────────────────────────
 tab_naukri, tab_linkedin, tab_indeed, tab_all, tab_posts = st.tabs([
@@ -228,6 +229,44 @@ with tab_all:
     show_paginated(filtered_all, "all", key_prefix="sa")
 
 with tab_posts:
+    # ── Manual trigger ─────────────────────────────────────────────────────────
+    from src.job_api import fetch_linkedin_posts as _fetch_posts
+
+    col_fetch, col_note = st.columns([1, 4])
+    with col_fetch:
+        if st.button("🔄 Fetch Latest Posts", use_container_width=True, key="fetch_posts_btn"):
+            with st.spinner("Scraping 4 hashtag searches… this takes ~2 min"):
+                saved, total = _fetch_posts(max_results=30)
+            if saved > 0:
+                st.success(f"✅ Saved {saved} new posts (out of {total} scraped). Refreshing…")
+                st.session_state.pop("db_linkedin_posts", None)
+                st.rerun()
+            elif total > 0:
+                st.info(f"Scraped {total} posts but all were older than 15 days or duplicates.")
+            else:
+                st.warning("No posts returned. Check Apify logs.")
+    with col_note:
+        st.caption("Fetches posts for all 4 hashtag combos via Apify. Cron also runs daily at 8 AM IST automatically.")
+
+    # ── Keyword chips ──────────────────────────────────────────────────────────
+    unique_keywords = sorted({
+        normalize_hashtag_source(p.get("hashtag_source") or "")
+        for p in linkedin_posts
+        if p.get("hashtag_source")
+    })
+    if unique_keywords:
+        st.markdown("**🔖 Keywords in DB:**")
+        st.markdown(
+            " &nbsp; ".join(
+                f'<span style="background:#e8f0fe;color:#0a66c2;font-size:12px;'
+                f'font-weight:600;padding:3px 10px;border-radius:12px;">{kw}</span>'
+                for kw in unique_keywords
+            ),
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("---")
+
     if not filtered_posts:
         st.info("No LinkedIn posts found. Try refreshing the DB or adjusting the search filter.")
     else:

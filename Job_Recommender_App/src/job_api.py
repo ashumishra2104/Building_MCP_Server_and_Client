@@ -9,7 +9,7 @@ load_dotenv(override=True)
 APIFY_API_TOKEN = os.getenv("APIFY_API_TOKEN")
 apify_client = ApifyClient(APIFY_API_TOKEN)
 
-from src.database import save_jobs_to_db
+from src.database import save_jobs_to_db, save_linkedin_posts_to_db
 
 
 @st.cache_data(show_spinner=False)
@@ -111,6 +111,47 @@ def fetch_indeed_jobs(search_query, location="India", country="IN", rows=50):
     except Exception as e:
         st.error(f"Unexpected error fetching Indeed jobs: {e}")
         return []
+
+
+LINKEDIN_POST_SEARCHES = [
+    "https://www.linkedin.com/search/results/content/?keywords=%23wearehiring%20%23productmanager&sortBy=date",
+    "https://www.linkedin.com/search/results/content/?keywords=%23pmjobs%20%23india&sortBy=date",
+    "https://www.linkedin.com/search/results/content/?keywords=%23hiring%20%23productmanager%20%23india&sortBy=date",
+    "https://www.linkedin.com/search/results/content/?keywords=%23ProductManagement%20%23ProductLeadership%20%23Hiring&sortBy=date",
+    "https://www.linkedin.com/search/results/content/?keywords=%23ProductManagement%20%23ProductLeadership%20%23Hiring%20%23HiringIndia%20%23SeniorProductManager&sortBy=date",
+    "https://www.linkedin.com/search/results/content/?keywords=%23AIProductManagement%20%23GenAI%20%23ProductManagement%20%23HiringIndia%20%23Hiring&sortBy=date",
+]
+
+
+def fetch_linkedin_posts(max_results=30):
+    """Fetch LinkedIn hiring posts across 4 hashtag searches, save to Supabase."""
+    all_posts = []
+    try:
+        # Start all 4 runs concurrently
+        runs = []
+        for url in LINKEDIN_POST_SEARCHES:
+            run = apify_client.actor("Wpp1BZ6yGWjySadk3").start(
+                run_input={"urls": [url], "maxResults": max_results}
+            )
+            runs.append(run)
+
+        # Wait for each and collect items
+        for run in runs:
+            try:
+                apify_client.run(run["id"]).wait_for_finish()
+                items = list(apify_client.dataset(run["defaultDatasetId"]).iterate_items())
+                all_posts.extend(items)
+            except Exception as e:
+                st.warning(f"A post scrape run failed: {e}")
+
+        saved = save_linkedin_posts_to_db(all_posts)
+        return saved, len(all_posts)
+    except ApifyApiError as e:
+        _show_apify_error("LinkedIn Posts", str(e))
+        return 0, 0
+    except Exception as e:
+        st.error(f"Unexpected error fetching LinkedIn posts: {e}")
+        return 0, 0
 
 
 def _show_apify_error(source: str, raw_msg: str):
