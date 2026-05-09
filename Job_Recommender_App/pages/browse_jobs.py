@@ -1,7 +1,22 @@
 import streamlit as st
-from src.database import get_jobs_from_db, get_linkedin_posts_from_db
+from src.database import get_jobs_from_db, get_linkedin_posts_from_db, get_active_profile, get_applied_job_ids
 from src.ui_components import JOB_CARD_CSS, render_linkedin_card, render_naukri_card, render_indeed_card, render_linkedin_post_card, normalize_hashtag_source
 from src.location_utils import get_available_cities, job_matches_cities
+
+USER_EMAIL = "demo@nomail.com"
+
+# ── Auto-load active profile into session if resume not already set ────────────
+if not st.session_state.get("resume_text"):
+    if "active_profile" not in st.session_state:
+        st.session_state["active_profile"] = get_active_profile(USER_EMAIL)
+    prof = st.session_state.get("active_profile")
+    if prof:
+        st.session_state["resume_text"]    = prof.get("resume_text", "")
+        st.session_state["candidate_name"] = prof.get("candidate_name", "Candidate")
+
+# ── Load applied job IDs once per session ──────────────────────────────────────
+if "applied_job_ids" not in st.session_state:
+    st.session_state["applied_job_ids"] = get_applied_job_ids(USER_EMAIL)
 
 JOBS_PER_PAGE = 10
 
@@ -10,8 +25,9 @@ with st.sidebar:
     st.header("👤 Account")
     st.write("Logged in as: **demo@nomail.com**")
     if st.button("🚪 Logout", use_container_width=True):
-        st.session_state["authenticated"] = False
-        st.session_state["resume_analyzed"] = False
+        for key in ("authenticated", "resume_text", "candidate_name", "active_profile",
+                    "resume_analyzed", "resume_summary", "skill_gaps"):
+            st.session_state.pop(key, None)
         st.rerun()
     st.divider()
     st.header("📊 Database Stats")
@@ -40,19 +56,19 @@ candidate_name = (st.session_state.get("candidate_name", "Candidate") or "Candid
 # ── Load jobs once into session state ──────────────────────────────────────────
 if "db_linkedin_jobs" not in st.session_state:
     with st.spinner("Loading LinkedIn jobs..."):
-        st.session_state["db_linkedin_jobs"] = get_jobs_from_db("linkedin", limit=500)
+        st.session_state["db_linkedin_jobs"] = get_jobs_from_db("linkedin", limit=2000)
 
 if "db_naukri_jobs" not in st.session_state:
     with st.spinner("Loading Naukri jobs..."):
-        st.session_state["db_naukri_jobs"] = get_jobs_from_db("naukri", limit=500)
+        st.session_state["db_naukri_jobs"] = get_jobs_from_db("naukri", limit=2000)
 
 if "db_indeed_jobs" not in st.session_state:
     with st.spinner("Loading Indeed jobs..."):
-        st.session_state["db_indeed_jobs"] = get_jobs_from_db("indeed", limit=500)
+        st.session_state["db_indeed_jobs"] = get_jobs_from_db("indeed", limit=2000)
 
 if "db_linkedin_posts" not in st.session_state:
     with st.spinner("Loading LinkedIn posts..."):
-        st.session_state["db_linkedin_posts"] = get_linkedin_posts_from_db(limit=200)
+        st.session_state["db_linkedin_posts"] = get_linkedin_posts_from_db(limit=500)
 
 linkedin_jobs   = st.session_state["db_linkedin_jobs"]
 naukri_jobs     = st.session_state["db_naukri_jobs"]
@@ -79,33 +95,47 @@ with col_city:
         placeholder="Select one or more cities…",
     )
 
-col_refresh, col_clear = st.columns([1, 5])
+col_refresh, col_status = st.columns([1, 4])
 with col_refresh:
     if st.button("🔄 Refresh DB"):
-        for key in ("db_linkedin_jobs", "db_naukri_jobs", "db_indeed_jobs", "db_linkedin_posts", "available_cities"):
+        for key in ("db_linkedin_jobs", "db_naukri_jobs", "db_indeed_jobs", "db_linkedin_posts",
+                    "available_cities", "applied_job_ids"):
             st.session_state.pop(key, None)
         st.rerun()
-with col_clear:
-    if selected_cities or title_query:
-        st.caption(f"Showing results filtered by: "
-                   + (f"title=`{title_query}` " if title_query else "")
-                   + (f"cities=`{', '.join(selected_cities)}`" if selected_cities else ""))
+with col_status:
+    status_filter = st.radio(
+        "Application status",
+        options=["All", "Not Applied", "Applied"],
+        horizontal=True,
+        label_visibility="collapsed",
+    )
 
 st.markdown("---")
 
 # ── Apply filters (client-side, instant) ──────────────────────────────────────
-def apply_filters(jobs, title_field='title'):
+applied_ids = st.session_state.get("applied_job_ids", set())
+
+def _job_id(job, source):
+    if source == "indeed":
+        return str(job.get("id") or "")
+    return str(job.get("jobId") or job.get("id") or job.get("url") or "")
+
+def apply_filters(jobs, title_field="title", source="linkedin"):
     filtered = jobs
     if title_query:
         q = title_query.lower()
-        filtered = [j for j in filtered if q in (j.get(title_field) or '').lower()]
+        filtered = [j for j in filtered if q in (j.get(title_field) or "").lower()]
     if selected_cities:
         filtered = [j for j in filtered if job_matches_cities(j, selected_cities)]
+    if status_filter == "Applied":
+        filtered = [j for j in filtered if _job_id(j, source) in applied_ids]
+    elif status_filter == "Not Applied":
+        filtered = [j for j in filtered if _job_id(j, source) not in applied_ids]
     return filtered
 
-filtered_linkedin = apply_filters(linkedin_jobs, title_field='title')
-filtered_naukri   = apply_filters(naukri_jobs,   title_field='title')
-filtered_indeed   = apply_filters(indeed_jobs,   title_field='positionName')
+filtered_linkedin = apply_filters(linkedin_jobs, title_field="title",        source="linkedin")
+filtered_naukri   = apply_filters(naukri_jobs,   title_field="title",        source="naukri")
+filtered_indeed   = apply_filters(indeed_jobs,   title_field="positionName", source="indeed")
 filtered_all      = [(j, "linkedin") for j in filtered_linkedin] + \
                     [(j, "naukri")   for j in filtered_naukri]   + \
                     [(j, "indeed")   for j in filtered_indeed]
@@ -203,32 +233,41 @@ post_text_query = title_query  # reuse the title filter box
 filtered_posts = linkedin_posts
 if post_text_query:
     q = post_text_query.lower()
-    filtered_posts = [p for p in linkedin_posts if q in (p.get("text") or "").lower()
+    filtered_posts = [p for p in filtered_posts if q in (p.get("text") or "").lower()
                       or q in (p.get("author_name") or "").lower()
                       or q in normalize_hashtag_source(p.get("hashtag_source") or "").lower()]
+if status_filter == "Applied":
+    filtered_posts = [p for p in filtered_posts if str(p.get("url") or "") in applied_ids]
+elif status_filter == "Not Applied":
+    filtered_posts = [p for p in filtered_posts if str(p.get("url") or "") not in applied_ids]
 
 # ── Source tabs ────────────────────────────────────────────────────────────────
 tab_naukri, tab_linkedin, tab_indeed, tab_all, tab_posts = st.tabs([
-    f"💼 Naukri  ({len(filtered_naukri)})",
-    f"🏢 LinkedIn  ({len(filtered_linkedin)})",
-    f"🔵 Indeed  ({len(filtered_indeed)})",
-    f"🌐 All  ({len(filtered_all)})",
-    f"📢 Posts  ({len(filtered_posts)})",
+    "💼 Naukri",
+    "🏢 LinkedIn",
+    "🔵 Indeed",
+    "🌐 All",
+    "📢 Posts",
 ])
 
 with tab_naukri:
+    st.caption(f"{len(filtered_naukri)} jobs")
     show_paginated(filtered_naukri, "naukri", key_prefix="sn")
 
 with tab_linkedin:
+    st.caption(f"{len(filtered_linkedin)} jobs")
     show_paginated(filtered_linkedin, "linkedin", key_prefix="sl")
 
 with tab_indeed:
+    st.caption(f"{len(filtered_indeed)} jobs")
     show_paginated(filtered_indeed, "indeed", key_prefix="si")
 
 with tab_all:
+    st.caption(f"{len(filtered_all)} jobs")
     show_paginated(filtered_all, "all", key_prefix="sa")
 
 with tab_posts:
+    st.caption(f"{len(filtered_posts)} posts")
     # ── Manual trigger ─────────────────────────────────────────────────────────
     from src.job_api import fetch_linkedin_posts as _fetch_posts
 
@@ -290,7 +329,7 @@ with tab_posts:
         st.caption(f"Showing **{p_start + 1}–{p_end}** of **{total_posts}** posts  •  Page {post_page} of {total_post_pages}")
 
         for post in filtered_posts[p_start:p_end]:
-            render_linkedin_post_card(post)
+            render_linkedin_post_card(post, resume_text, candidate_name)
 
         # Pagination bar
         st.markdown("---")

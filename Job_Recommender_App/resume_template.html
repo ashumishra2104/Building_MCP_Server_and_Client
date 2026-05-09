@@ -3,27 +3,27 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Resume – Ashu Mishra</title>
+<title>Resume</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet"/>
 <style>
 
 /* ─── PAGE SETUP ─────────────────────────────────────────── */
 @page {
   size: A4;
-  margin: 16mm 18mm 16mm 18mm;
+  margin: 14mm 16mm 14mm 16mm;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-  --navy:   #1F3864;
-  --teal:   #17A589;
-  --orange: #E67E22;
+  --navy:   #1B3A6B;
+  --gold:   #C8861A;
   --dark:   #1a1a2e;
-  --body:   #3a3a4a;
-  --muted:  #7a7a8a;
-  --rule:   #dde3ec;
+  --body:   #2d2d3a;
+  --muted:  #6b6b7a;
+  --rule:   #d8e0ee;
   --bg:     #ffffff;
+  --light-bg: #f0f4fb;
 }
 
 body {
@@ -37,14 +37,9 @@ body {
 /* ─── HEADER ─────────────────────────────────────────────── */
 .header {
   padding-bottom: 10px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   border-bottom: 3px solid var(--navy);
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
 }
-
-.header-left {}
 
 .name {
   font-family: 'DM Serif Display', serif;
@@ -57,27 +52,67 @@ body {
 .tagline {
   font-size: 9.5pt;
   font-weight: 600;
-  color: var(--teal);
+  color: var(--gold);
   letter-spacing: 0.8px;
   text-transform: uppercase;
   margin-top: 4px;
+  margin-bottom: 8px;
 }
 
-.contact {
-  text-align: right;
+/* ─── CONTACT TABLE ──────────────────────────────────────── */
+.contact-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
+}
+
+.contact-table td {
+  padding: 0 10px 0 0;
   font-size: 8.2pt;
   color: var(--muted);
-  line-height: 1.7;
+  vertical-align: middle;
+  white-space: nowrap;
 }
 
-.contact a {
-  color: var(--teal);
+.contact-table td:last-child {
+  padding-right: 0;
+}
+
+.contact-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-size: 7.8pt;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-decoration: none;
+  margin-right: 3px;
+  vertical-align: middle;
+}
+
+.badge-linkedin {
+  background: #0a66c2;
+  color: #ffffff;
+}
+
+.badge-github {
+  background: #6e7781;
+  color: #ffffff;
+}
+
+.badge-website {
+  background: var(--gold);
+  color: #ffffff;
+}
+
+.contact-table a {
+  color: var(--navy);
   text-decoration: none;
 }
 
 /* ─── SECTION HEADERS ────────────────────────────────────── */
 .section {
-  margin-bottom: 12px;
+  margin-bottom: 11px;
 }
 
 .section-title {
@@ -88,7 +123,7 @@ body {
   color: var(--navy);
   padding-bottom: 3px;
   margin-bottom: 7px;
-  border-bottom: 1.5px solid var(--teal);
+  border-bottom: 1.5px solid var(--gold);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -99,7 +134,7 @@ body {
   display: inline-block;
   width: 6px;
   height: 6px;
-  background: var(--orange);
+  background: var(--gold);
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -111,26 +146,36 @@ body {
   line-height: 1.6;
 }
 
-/* ─── COMPETENCIES ───────────────────────────────────────── */
-.competencies {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
+.summary p strong {
+  font-weight: 700;
+  color: var(--navy);
 }
 
-.tag {
-  background: #edf2f9;
-  color: var(--navy);
+/* ─── COMPETENCY TABLE ───────────────────────────────────── */
+.competency-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.competency-table td {
+  padding: 2.5px 6px;
   font-size: 7.8pt;
   font-weight: 600;
-  padding: 2.5px 8px;
-  border-radius: 3px;
-  border-left: 2.5px solid var(--teal);
+  color: var(--navy);
+  background: var(--light-bg);
+  border-left: 2.5px solid var(--gold);
+  border-radius: 2px;
+  width: 25%;
+  vertical-align: top;
+}
+
+.competency-table tr + tr td {
+  padding-top: 4px;
 }
 
 /* ─── EXPERIENCE ─────────────────────────────────────────── */
 .job {
-  margin-bottom: 11px;
+  margin-bottom: 10px;
   page-break-inside: avoid;
 }
 
@@ -157,7 +202,7 @@ body {
 .job-company {
   font-size: 8.5pt;
   font-weight: 600;
-  color: var(--teal);
+  color: var(--gold);
   margin-bottom: 4px;
 }
 
@@ -186,7 +231,7 @@ ul.bullets li::before {
   content: '▸';
   position: absolute;
   left: 0;
-  color: var(--orange);
+  color: var(--gold);
   font-size: 7pt;
   top: 1.5px;
 }
@@ -208,33 +253,50 @@ ul.bullets li .bold {
   color: var(--navy);
 }
 
-/* ─── ACHIEVEMENTS ───────────────────────────────────────── */
-.achievements-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 5px 16px;
+/* ─── ACHIEVEMENTS TABLE ─────────────────────────────────── */
+.achievements-table {
+  width: 100%;
+  border-collapse: collapse;
 }
 
-.achievement-item {
+.achievements-table td {
+  padding: 4px 8px 4px 0;
   font-size: 8.5pt;
   color: var(--body);
-  padding-left: 12px;
-  position: relative;
-  line-height: 1.5;
+  vertical-align: top;
+  width: 50%;
 }
 
-.achievement-item::before {
-  content: '◆';
-  position: absolute;
-  left: 0;
-  color: var(--teal);
+.achievements-table td::before {
+  content: '◆ ';
+  color: var(--gold);
   font-size: 6pt;
-  top: 2px;
+  vertical-align: middle;
 }
 
-.achievement-item .label {
+.achievements-table .label {
   font-weight: 700;
   color: var(--navy);
+}
+
+/* ─── SKILLS TABLE ───────────────────────────────────────── */
+.skills-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.skills-table td {
+  padding: 3px 8px;
+  font-size: 8.2pt;
+  color: var(--body);
+  vertical-align: top;
+}
+
+.skills-table .skill-category {
+  font-weight: 700;
+  color: var(--navy);
+  white-space: nowrap;
+  width: 130px;
 }
 
 /* ─── EDUCATION ──────────────────────────────────────────── */
@@ -258,7 +320,7 @@ ul.bullets li .bold {
 
 .edu-school {
   font-size: 8.2pt;
-  color: var(--teal);
+  color: var(--gold);
   font-weight: 600;
 }
 
@@ -268,15 +330,19 @@ ul.bullets li .bold {
 
 <!-- ═══════════ HEADER ═══════════ -->
 <div class="header">
-  <div class="header-left">
-    <div class="name">Ashu Mishra</div>
-    <div class="tagline">Senior Product Manager — B2B SaaS · AI/ML · Supply Chain &amp; IoT</div>
-  </div>
-  <div class="contact">
-    +91 88826 44660<br/>
-    ashumishra1@outlook.com<br/>
-    <a href="https://linkedin.com/in/ashumish">linkedin.com/in/ashumish</a>
-  </div>
+  <div class="name">Ashu Mishra</div>
+  <div class="tagline">Senior Product Manager — B2B SaaS · AI/ML · Supply Chain &amp; IoT</div>
+
+  <table class="contact-table">
+    <tr>
+      <td>📞 +91 88826 44660</td>
+      <td>✉️ ashumishra1@outlook.com</td>
+      <td>📍 Gurgaon, India</td>
+      <td><a class="contact-badge badge-linkedin" href="https://linkedin.com/in/ashumish">in LinkedIn</a></td>
+      <!-- PORTFOLIO_GITHUB_ROW -->
+      <!-- PORTFOLIO_WEBSITE_ROW -->
+    </tr>
+  </table>
 </div>
 
 <!-- ═══════════ SUMMARY ═══════════ -->
@@ -290,22 +356,26 @@ ul.bullets li .bold {
 <!-- ═══════════ COMPETENCIES ═══════════ -->
 <div class="section">
   <div class="section-title">Core Competencies</div>
-  <div class="competencies">
-    <span class="tag">B2B SaaS Product Management</span>
-    <span class="tag">System Architecture &amp; Design</span>
-    <span class="tag">Agile / Scrum Leadership</span>
-    <span class="tag">AI/ML Product Delivery</span>
-    <span class="tag">Supply Chain &amp; Logistics Solutions</span>
-    <span class="tag">Technical Team Management</span>
-    <span class="tag">Client Requirements &amp; Solutioning</span>
-    <span class="tag">Product Roadmap &amp; GTM Strategy</span>
-    <span class="tag">IoT / GPS / RFID (Familiar)</span>
-    <span class="tag">Vector Databases &amp; NLP</span>
-    <span class="tag">API Integration &amp; Payment Systems</span>
-    <span class="tag">SQL · Python · Jira · Figma · Tableau</span>
-    <span class="tag">OKRs / KPIs &amp; Data-Driven Decisions</span>
-    <span class="tag">Cross-functional Stakeholder Management</span>
-  </div>
+  <table class="competency-table">
+    <tr>
+      <td>B2B SaaS Product Management</td>
+      <td>System Architecture &amp; Design</td>
+      <td>Agile / Scrum Leadership</td>
+      <td>AI/ML Product Delivery</td>
+    </tr>
+    <tr>
+      <td>Supply Chain &amp; Logistics</td>
+      <td>Technical Team Management</td>
+      <td>Client Requirements &amp; Solutioning</td>
+      <td>Product Roadmap &amp; GTM Strategy</td>
+    </tr>
+    <tr>
+      <td>Vector Databases &amp; NLP</td>
+      <td>API Integration &amp; Payments</td>
+      <td>OKRs / KPIs &amp; Data Analytics</td>
+      <td>Cross-functional Stakeholder Mgmt</td>
+    </tr>
+  </table>
 </div>
 
 <!-- ═══════════ EXPERIENCE ═══════════ -->
@@ -392,12 +462,16 @@ ul.bullets li .bold {
 <!-- ═══════════ KEY ACHIEVEMENTS ═══════════ -->
 <div class="section">
   <div class="section-title">Key Achievements</div>
-  <div class="achievements-grid">
-    <div class="achievement-item"><span class="label">Revenue &amp; Payments:</span> Managed 300–400 Cr monthly invoices with 99.5% success rate across India &amp; Dubai B2B operations.</div>
-    <div class="achievement-item"><span class="label">Working Capital:</span> Unlocked USD 130M + 40 Cr through intelligent procurement and supply chain automation.</div>
-    <div class="achievement-item"><span class="label">AI Scale:</span> Built NLP pipelines processing 20,000+ articles/day with sub-30s vector search on 15M+ records.</div>
-    <div class="achievement-item"><span class="label">Cost Optimisation:</span> Achieved 2 Cr monthly logistics savings and 90% manpower reduction through product-led automation.</div>
-  </div>
+  <table class="achievements-table">
+    <tr>
+      <td><span class="label">Revenue &amp; Payments:</span> Managed 300–400 Cr monthly invoices with 99.5% success rate across India &amp; Dubai B2B operations.</td>
+      <td><span class="label">Working Capital:</span> Unlocked USD 130M + 40 Cr through intelligent procurement and supply chain automation.</td>
+    </tr>
+    <tr>
+      <td><span class="label">AI Scale:</span> Built NLP pipelines processing 20,000+ articles/day with sub-30s vector search on 15M+ records.</td>
+      <td><span class="label">Cost Optimisation:</span> Achieved 2 Cr monthly logistics savings and 90% manpower reduction through product-led automation.</td>
+    </tr>
+  </table>
 </div>
 
 <!-- ═══════════ EDUCATION ═══════════ -->

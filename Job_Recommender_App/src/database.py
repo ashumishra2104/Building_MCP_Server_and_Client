@@ -210,7 +210,12 @@ def get_jobs_from_db(source, search_query=None, limit=100):
             if search_query:
                 query = query.ilike("title", f"%{search_query}%")
             result = query.limit(limit).order("fetched_at", desc=True).execute()
-            return [json.loads(row["raw_data"]) for row in result.data]
+            jobs = []
+            for row in result.data:
+                job = json.loads(row["raw_data"])
+                job["_fetched_at"] = row.get("fetched_at", "")
+                jobs.append(job)
+            return jobs
         except Exception as e:
             print(f"Supabase fetch error: {e}")
 
@@ -244,9 +249,13 @@ def _get_indeed_from_db(search_query=None, limit=100):
             for row in result.data:
                 raw = row.get("raw_data")
                 if isinstance(raw, dict):
-                    jobs.append(raw)
+                    job = raw
                 elif raw:
-                    jobs.append(json.loads(raw))
+                    job = json.loads(raw)
+                else:
+                    continue
+                job["_fetched_at"] = row.get("fetched_at", "")
+                jobs.append(job)
             return jobs
         except Exception as e:
             print(f"Supabase fetch error (indeed): {e}")
@@ -357,6 +366,194 @@ def save_linkedin_posts_to_db(posts_list):
         except Exception as e:
             print(f"Supabase error (linkedin_posts save): {e}")
     return 0
+
+
+def toggle_job_application(user_email, job_id, source):
+    """Toggle applied state. Returns True if now applied, False if now unapplied."""
+    if not supabase:
+        return False
+    try:
+        existing = (
+            supabase.table("job_applications")
+            .select("id")
+            .eq("user_email", user_email)
+            .eq("job_id", str(job_id))
+            .eq("source", source)
+            .limit(1)
+            .execute()
+        )
+        if existing.data:
+            supabase.table("job_applications").delete().eq("id", existing.data[0]["id"]).execute()
+            return False
+        else:
+            from datetime import datetime, timezone
+            supabase.table("job_applications").insert({
+                "user_email": user_email,
+                "job_id":     str(job_id),
+                "source":     source,
+                "applied_at": datetime.now(timezone.utc).isoformat(),
+            }).execute()
+            return True
+    except Exception as e:
+        print(f"Error toggling job application: {e}")
+        return False
+
+
+def get_applied_job_ids(user_email):
+    """Return set of job_ids the user has marked as applied."""
+    if not supabase:
+        return set()
+    try:
+        result = (
+            supabase.table("job_applications")
+            .select("job_id")
+            .eq("user_email", user_email)
+            .execute()
+        )
+        return {row["job_id"] for row in result.data}
+    except Exception as e:
+        print(f"Error fetching applied jobs: {e}")
+        return set()
+
+
+def save_user_profile(user_email, profile_name, resume_text, candidate_name, candidate_email, candidate_phone, raw_pdf_name):
+    """Save (or replace) the single active profile for a user."""
+    if not supabase:
+        return False
+    try:
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).isoformat()
+        record = {
+            "user_email":     user_email,
+            "profile_name":   profile_name,
+            "resume_text":    resume_text,
+            "candidate_name": candidate_name,
+            "candidate_email": candidate_email,
+            "candidate_phone": candidate_phone,
+            "raw_pdf_name":   raw_pdf_name,
+            "is_active":      True,
+            "updated_at":     now,
+        }
+        # Upsert on user_email — one profile per user
+        supabase.table("user_profiles").upsert(record, on_conflict="user_email").execute()
+        return True
+    except Exception as e:
+        print(f"Error saving user profile: {e}")
+        return False
+
+
+def get_active_profile(user_email):
+    """Fetch the active profile for a user. Returns dict or None."""
+    if not supabase:
+        return None
+    try:
+        result = (
+            supabase.table("user_profiles")
+            .select("*")
+            .eq("user_email", user_email)
+            .eq("is_active", True)
+            .limit(1)
+            .execute()
+        )
+        return result.data[0] if result.data else None
+    except Exception as e:
+        print(f"Error fetching user profile: {e}")
+        return None
+
+
+def delete_user_profile(user_email):
+    """Delete the active profile for a user."""
+    if not supabase:
+        return False
+    try:
+        supabase.table("user_profiles").delete().eq("user_email", user_email).execute()
+        return True
+    except Exception as e:
+        print(f"Error deleting user profile: {e}")
+        return False
+
+
+def get_dashboard_stats(user_email):
+    """Fetch all stats needed for the dashboard in one place."""
+    if not supabase:
+        return None
+    try:
+        from datetime import datetime, timezone, timedelta
+        now     = datetime.now(timezone.utc)
+        week_ago = (now - timedelta(days=7)).isoformat()
+
+        # ── Totals in DB ──────────────────────────────────────────
+        l_total = supabase.table("linkedin_jobs_v2").select("*", count="exact").limit(1).execute().count or 0
+        n_total = supabase.table("naukri_jobs_v2").select("*", count="exact").limit(1).execute().count or 0
+        i_total = supabase.table("indeed_jobs").select("*", count="exact").limit(1).execute().count or 0
+
+        # ── New jobs this week ─────────────────────────────────────
+        l_new = supabase.table("linkedin_jobs_v2").select("*", count="exact").gte("fetched_at", week_ago).limit(1).execute().count or 0
+        n_new = supabase.table("naukri_jobs_v2").select("*", count="exact").gte("fetched_at", week_ago).limit(1).execute().count or 0
+        i_new = supabase.table("indeed_jobs").select("*", count="exact").gte("fetched_at", week_ago).limit(1).execute().count or 0
+
+        # ── Applications ───────────────────────────────────────────
+        apps = supabase.table("job_applications").select("*").eq("user_email", user_email).execute().data or []
+
+        applied_total   = len(apps)
+        applied_this_wk = sum(1 for a in apps if a.get("applied_at","") >= week_ago)
+        applied_by_src  = {"linkedin": 0, "naukri": 0, "indeed": 0}
+        for a in apps:
+            src = a.get("source","")
+            if src in applied_by_src:
+                applied_by_src[src] += 1
+
+        # ── Day-wise applications ──────────────────────────────────
+        from collections import defaultdict
+        day_counts = defaultdict(int)
+        dow_counts = defaultdict(int)  # 0=Mon..6=Sun
+        for a in apps:
+            ts = a.get("applied_at","")
+            if ts:
+                try:
+                    dt = datetime.fromisoformat(ts.replace("Z","+00:00"))
+                    day_counts[dt.strftime("%Y-%m-%d")] += 1
+                    dow_counts[dt.weekday()] += 1
+                except Exception:
+                    pass
+
+        # ── Top companies applied to ───────────────────────────────
+        l_ids = [a["job_id"] for a in apps if a.get("source") == "linkedin"]
+        n_ids = [a["job_id"] for a in apps if a.get("source") == "naukri"]
+        i_ids = [a["job_id"] for a in apps if a.get("source") == "indeed"]
+
+        company_counts = defaultdict(int)
+        if l_ids:
+            rows = supabase.table("linkedin_jobs_v2").select("company").in_("job_id", l_ids).execute().data or []
+            for r in rows:
+                c = r.get("company") or "Unknown"
+                company_counts[c] += 1
+        if n_ids:
+            rows = supabase.table("naukri_jobs_v2").select("company").in_("job_id", n_ids).execute().data or []
+            for r in rows:
+                c = r.get("company") or "Unknown"
+                company_counts[c] += 1
+        if i_ids:
+            rows = supabase.table("indeed_jobs").select("company").in_("id", i_ids).execute().data or []
+            for r in rows:
+                c = r.get("company") or "Unknown"
+                company_counts[c] += 1
+
+        top_companies = sorted(company_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+
+        return {
+            "totals":        {"linkedin": l_total, "naukri": n_total, "indeed": i_total},
+            "new_this_week": {"linkedin": l_new,   "naukri": n_new,   "indeed": i_new},
+            "applied_total":   applied_total,
+            "applied_this_wk": applied_this_wk,
+            "applied_by_src":  applied_by_src,
+            "day_counts":      dict(day_counts),
+            "dow_counts":      dict(dow_counts),
+            "top_companies":   top_companies,
+        }
+    except Exception as e:
+        print(f"Dashboard stats error: {e}")
+        return None
 
 
 def get_all_keys(source):

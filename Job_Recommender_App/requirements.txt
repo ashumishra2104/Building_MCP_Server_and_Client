@@ -6,3 +6,4 @@ supabase
 weasyprint
 pymupdf
 requests
+plotly

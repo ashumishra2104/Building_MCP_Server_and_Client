@@ -12,12 +12,12 @@ init_db()
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.header("👤 Account")
-    if st.session_state.get("authenticated"):
-        st.write("Logged in as: **demo@nomail.com**")
-        if st.button("🚪 Logout", use_container_width=True):
-            st.session_state["authenticated"] = False
-            st.session_state["resume_analyzed"] = False
-            st.rerun()
+    st.write("Logged in as: **demo@nomail.com**")
+    if st.button("🚪 Logout", use_container_width=True):
+        for key in ("authenticated", "resume_analyzed", "resume_text", "candidate_name",
+                    "active_profile", "resume_summary", "skill_gaps"):
+            st.session_state.pop(key, None)
+        st.rerun()
     st.divider()
     st.header("📊 Database Stats")
     try:
@@ -33,29 +33,6 @@ with st.sidebar:
             st.write("Database not connected.")
     except Exception:
         st.write("Stats unavailable.")
-
-# ── Login gate ─────────────────────────────────────────────────────────────────
-if not st.session_state.get("authenticated"):
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown("<br><br>", unsafe_allow_html=True)
-        st.markdown("""
-            <div style='background:#fff;padding:30px;border-radius:16px;border:1px solid #e1e4e8;box-shadow:0 10px 25px rgba(0,0,0,0.1);'>
-                <h2 style='text-align:center;color:#0077b5;margin-bottom:5px;'>🔓 Account Login</h2>
-                <p style='text-align:center;color:#586069;font-size:14px;margin-bottom:25px;'>Enter your credentials to access the AI Job Recommender</p>
-            </div>
-        """, unsafe_allow_html=True)
-        with st.form("login_form"):
-            email = st.text_input("📧 Email Address", placeholder="demo@nomail.com")
-            password = st.text_input("🔑 Password", type="password", placeholder="••••••••")
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.form_submit_button("Launch Dashboard", use_container_width=True):
-                if email == "demo@nomail.com" and password == "password":
-                    st.session_state["authenticated"] = True
-                    st.rerun()
-                else:
-                    st.error("❌ Invalid Email or Password")
-    st.stop()
 
 # ── Main content ───────────────────────────────────────────────────────────────
 st.markdown(JOB_CARD_CSS, unsafe_allow_html=True)
