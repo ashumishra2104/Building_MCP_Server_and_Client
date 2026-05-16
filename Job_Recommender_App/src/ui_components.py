@@ -78,16 +78,26 @@ def clean_html(raw_html):
 
 def _tailor_tab(resume_text, full_desc, company, candidate_name, key_prefix):
     from src.helper import tailor_resume, generate_resume_pdf
+    from src.database import get_ats_keywords
     if not resume_text:
         st.info("Save your resume in My Profile to enable tailoring.")
         return
+
+    # Auto-load approved ATS keywords (cached in session)
+    if "ats_approved_keywords" not in st.session_state:
+        st.session_state["ats_approved_keywords"] = get_ats_keywords(USER_EMAIL, status="approved")
+    approved_keywords = [k["keyword"] for k in st.session_state["ats_approved_keywords"]]
+    if approved_keywords:
+        st.caption(f"ℹ️ {len(approved_keywords)} ATS keywords will be auto-injected from your approved list.")
+
     if st.button("✨ Create Customised Resume", key=f"tailor_{key_prefix}"):
         with st.spinner("Tailoring your resume to this role..."):
             template_path = os.path.join(APP_DIR, "resume_template.html")
             try:
                 with open(template_path) as f:
                     html_template = f.read()
-                tailored_html = tailor_resume(resume_text, full_desc, html_template)
+                tailored_html = tailor_resume(resume_text, full_desc, html_template,
+                                              approved_keywords=approved_keywords or None)
                 safe_company  = "".join(c for c in company if c.isalnum())
                 pdf_filename  = f"{candidate_name.replace(' ', '_')}_Tailored_{safe_company}.pdf"
                 if tailored_html:

@@ -1,6 +1,6 @@
 import streamlit as st
 import os
-from src.helper import extract_text_from_pdf, ask_openai
+from src.helper import extract_text_from_pdf, ask_openai, generate_search_titles
 from src.job_api import fetch_linkedin_jobs, fetch_naukri_jobs, fetch_indeed_jobs
 from src.database import init_db
 from src.ui_components import JOB_CARD_CSS, render_linkedin_card, render_naukri_card, render_indeed_card
@@ -26,11 +26,11 @@ with st.sidebar:
             l_res = sb.table("linkedin_jobs_v2").select("*", count="exact").limit(1).execute()
             n_res = sb.table("naukri_jobs_v2").select("*", count="exact").limit(1).execute()
             i_res = sb.table("indeed_jobs").select("*", count="exact").limit(1).execute()
-            st.write(f"📁 **LinkedIn Jobs cached:** {l_res.count}")
-            st.write(f"📁 **Naukri Jobs cached:** {n_res.count}")
-            st.write(f"📁 **Indeed Jobs cached:** {i_res.count}")
-        else:
-            st.write("Database not connected.")
+            p_res = sb.table("linkedin_posts").select("*", count="exact").limit(1).execute()
+            st.write(f"📁 **LinkedIn Jobs:** {l_res.count}")
+            st.write(f"📁 **Naukri Jobs:** {n_res.count}")
+            st.write(f"📁 **Indeed Jobs:** {i_res.count}")
+            st.write(f"📢 **LinkedIn Posts:** {p_res.count}")
     except Exception:
         st.write("Stats unavailable.")
 
@@ -94,47 +94,70 @@ if uploaded_file:
     st.caption("This fetches live jobs from LinkedIn, Naukri and Indeed using the Apify API.")
 
     if st.button("🧲 Get Job Recommendations"):
-        with st.spinner("Analysing profile for best search results..."):
-            designation = ask_openai(
-                f"Identify the latest job title from this resume summary. Return only the title:\n\n{resume_summary}",
-                max_tokens=50).strip()
-            keywords = ask_openai(
-                f"Suggest job titles and keywords for job search. Comma-separated list only:\n\n{resume_summary}",
-                max_tokens=100).strip()
-            linkedin_query = designation
-            kw_cleaned = [k.strip() for k in keywords.split(",") if k.strip().lower() != designation.lower()]
-            naukri_query = f"{designation} " + " ".join(kw_cleaned[:3])
-            st.session_state['linkedin_query'] = linkedin_query
-            st.session_state['naukri_query'] = naukri_query
+        with st.spinner("Analysing profile for best search titles…"):
+            config        = generate_search_titles(resume_summary)
+            search_titles = config.get("search_titles", ["Product Manager"])
+            current_title = config.get("current_title", search_titles[0])
+            st.session_state["search_titles"]  = search_titles
+            st.session_state["current_title"]  = current_title
 
-        with st.spinner(f"Fetching jobs for: {linkedin_query} & {naukri_query}"):
-            st.session_state['linkedin_jobs'] = fetch_linkedin_jobs(linkedin_query, rows=60)
-            st.session_state['naukri_jobs']   = fetch_naukri_jobs(naukri_query, rows=60)
-            st.session_state['indeed_jobs']   = fetch_indeed_jobs(linkedin_query, location="India", country="IN", rows=50)
+        # ── LinkedIn: 3 separate searches, dedup by jobId/id/url ────────────
+        linkedin_titles = search_titles[:3]
+        with st.spinner(f"LinkedIn — searching: {' · '.join(linkedin_titles)}"):
+            all_linkedin, seen_linkedin = [], set()
+            for title in linkedin_titles:
+                for job in (fetch_linkedin_jobs(title, rows=40) or []):
+                    jid = str(job.get("jobId") or job.get("id") or job.get("url") or "")
+                    if not jid or jid not in seen_linkedin:
+                        if jid:
+                            seen_linkedin.add(jid)
+                        all_linkedin.append(job)
+            st.session_state["linkedin_jobs"]  = all_linkedin
+            st.session_state["linkedin_query"] = " · ".join(linkedin_titles)
 
-    if 'linkedin_jobs' in st.session_state:
+        # ── Naukri: all titles joined as one keyword string ───────────────────
+        naukri_query = " ".join(search_titles[:5])
+        with st.spinner(f"Naukri — searching: {naukri_query}"):
+            st.session_state["naukri_jobs"]  = fetch_naukri_jobs(naukri_query, rows=60)
+            st.session_state["naukri_query"] = naukri_query
+
+        # ── Indeed: 3 separate searches, dedup by id/url ─────────────────────
+        indeed_titles = search_titles[:3]
+        with st.spinner(f"Indeed — searching: {' · '.join(indeed_titles)}"):
+            all_indeed, seen_indeed = [], set()
+            for title in indeed_titles:
+                for job in (fetch_indeed_jobs(title, location="India", country="IN", rows=30) or []):
+                    jid = str(job.get("id") or job.get("url") or "")
+                    if not jid or jid not in seen_indeed:
+                        if jid:
+                            seen_indeed.add(jid)
+                        all_indeed.append(job)
+            st.session_state["indeed_jobs"]  = all_indeed
+            st.session_state["indeed_query"] = " · ".join(indeed_titles)
+
+    if "linkedin_jobs" in st.session_state:
         st.markdown("---")
         st.header("🏢 LinkedIn Jobs")
-        st.info(f"🔍 Search: **{st.session_state.get('linkedin_query', '')}**")
-        if not st.session_state['linkedin_jobs']:
+        st.info(f"🔍 Searched: **{st.session_state.get('linkedin_query', '')}**  —  {len(st.session_state['linkedin_jobs'])} unique jobs")
+        if not st.session_state["linkedin_jobs"]:
             st.warning("No LinkedIn jobs found. Try refining your resume.")
-        for i, job in enumerate(st.session_state['linkedin_jobs']):
+        for i, job in enumerate(st.session_state["linkedin_jobs"]):
             render_linkedin_card(job, i, resume_text, candidate_name, key_prefix="l")
 
-    if 'naukri_jobs' in st.session_state:
+    if "naukri_jobs" in st.session_state:
         st.markdown("---")
         st.header("💼 Naukri Jobs (India)")
-        st.info(f"🔍 Search: **{st.session_state.get('naukri_query', '')}**")
-        if not st.session_state['naukri_jobs']:
+        st.info(f"🔍 Searched: **{st.session_state.get('naukri_query', '')}**  —  {len(st.session_state['naukri_jobs'])} jobs")
+        if not st.session_state["naukri_jobs"]:
             st.warning("No Naukri jobs found. Try adjusting your profile summary.")
-        for i, job in enumerate(st.session_state['naukri_jobs']):
+        for i, job in enumerate(st.session_state["naukri_jobs"]):
             render_naukri_card(job, i, resume_text, candidate_name, key_prefix="n")
 
-    if 'indeed_jobs' in st.session_state:
+    if "indeed_jobs" in st.session_state:
         st.markdown("---")
         st.header("🔵 Indeed Jobs (India)")
-        st.info(f"🔍 Search: **{st.session_state.get('linkedin_query', '')}**")
-        if not st.session_state['indeed_jobs']:
+        st.info(f"🔍 Searched: **{st.session_state.get('indeed_query', '')}**  —  {len(st.session_state['indeed_jobs'])} unique jobs")
+        if not st.session_state["indeed_jobs"]:
             st.warning("No Indeed jobs found. Try refining your resume.")
-        for i, job in enumerate(st.session_state['indeed_jobs']):
+        for i, job in enumerate(st.session_state["indeed_jobs"]):
             render_indeed_card(job, i, resume_text, candidate_name, key_prefix="i")

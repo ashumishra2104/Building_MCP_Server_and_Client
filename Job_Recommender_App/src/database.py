@@ -76,6 +76,20 @@ def init_db():
         )
     ''')
 
+    # ATS Keywords
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS ats_keywords (
+            id TEXT PRIMARY KEY,
+            user_email TEXT,
+            keyword TEXT,
+            category TEXT,
+            frequency INTEGER DEFAULT 1,
+            status TEXT DEFAULT 'pending',
+            extracted_at DATETIME,
+            updated_at DATETIME
+        )
+    ''')
+
     conn.commit()
     conn.close()
 
@@ -571,6 +585,258 @@ def get_all_keys(source):
         data = json.loads(row[0])
         unique_keys.update(data.keys())
     return sorted(list(unique_keys))
+
+# ── ATS Keywords ──────────────────────────────────────────────────────────────
+
+def get_last_extraction_time(user_email):
+    """Return ISO timestamp of the last keyword extraction run, or None."""
+    if supabase:
+        try:
+            result = (
+                supabase.table("ats_keywords")
+                .select("extracted_at")
+                .eq("user_email", user_email)
+                .order("extracted_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if result.data:
+                return result.data[0]["extracted_at"]
+        except Exception as e:
+            print(f"Error fetching last extraction time: {e}")
+
+    import sqlite3
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT MAX(extracted_at) FROM ats_keywords WHERE user_email = ?",
+            (user_email,),
+        )
+        row = cursor.fetchone()
+        conn.close()
+        return row[0] if row and row[0] else None
+    except Exception as e:
+        print(f"SQLite error (last extraction time): {e}")
+        return None
+
+
+def save_ats_keywords(user_email, keywords_by_category):
+    """
+    Bulk upsert extracted keywords. keywords_by_category is:
+      {category: {keyword: frequency}}
+    On re-extract: increments frequency for pending rows; leaves approved/rejected untouched.
+    """
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).isoformat()
+
+    # Build records — fetch existing statuses first to preserve approved/rejected
+    existing = {}
+    try:
+        if supabase:
+            res = supabase.table("ats_keywords").select("id,status,frequency").eq("user_email", user_email).execute()
+            for row in res.data or []:
+                existing[row["id"]] = row
+    except Exception:
+        pass
+
+    records = []
+    for category, kw_freq in keywords_by_category.items():
+        for keyword, frequency in kw_freq.items():
+            row_id = f"{user_email}|{keyword}"
+            existing_row = existing.get(row_id)
+            if existing_row and existing_row["status"] in ("approved", "rejected"):
+                # Increment frequency but don't reset status
+                records.append({
+                    "id": row_id,
+                    "user_email": user_email,
+                    "keyword": keyword,
+                    "category": category,
+                    "frequency": existing_row["frequency"] + frequency,
+                    "status": existing_row["status"],
+                    "extracted_at": now,
+                    "updated_at": now,
+                })
+            else:
+                records.append({
+                    "id": row_id,
+                    "user_email": user_email,
+                    "keyword": keyword,
+                    "category": category,
+                    "frequency": (existing_row["frequency"] + frequency) if existing_row else frequency,
+                    "status": "pending",
+                    "extracted_at": now,
+                    "updated_at": now,
+                })
+
+    if not records:
+        return 0
+
+    supabase_error = None
+    if supabase:
+        try:
+            supabase.table("ats_keywords").upsert(records, on_conflict="id").execute()
+            print(f"Saved {len(records)} ATS keywords to Supabase")
+        except Exception as e:
+            supabase_error = str(e)
+            print(f"Supabase error (ats_keywords save): {e}")
+
+    import sqlite3
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        for r in records:
+            cursor.execute('''
+                INSERT OR REPLACE INTO ats_keywords
+                (id, user_email, keyword, category, frequency, status, extracted_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (r["id"], r["user_email"], r["keyword"], r["category"],
+                  r["frequency"], r["status"], r["extracted_at"], r["updated_at"]))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"SQLite error (ats_keywords save): {e}")
+
+    return len(records), supabase_error
+
+
+def get_ats_keywords(user_email, status=None):
+    """Fetch ATS keywords for a user, optionally filtered by status."""
+    if supabase:
+        try:
+            query = supabase.table("ats_keywords").select("*").eq("user_email", user_email)
+            if status:
+                query = query.eq("status", status)
+            result = query.order("frequency", desc=True).execute()
+            if result.data:          # only trust Supabase if it actually has rows
+                return result.data
+            # fall through to SQLite if Supabase returned empty (e.g. RLS blocking writes)
+        except Exception as e:
+            print(f"Supabase error (get_ats_keywords): {e}")
+
+    import sqlite3
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        if status:
+            cursor.execute(
+                "SELECT id, user_email, keyword, category, frequency, status, extracted_at, updated_at "
+                "FROM ats_keywords WHERE user_email = ? AND status = ? ORDER BY frequency DESC",
+                (user_email, status),
+            )
+        else:
+            cursor.execute(
+                "SELECT id, user_email, keyword, category, frequency, status, extracted_at, updated_at "
+                "FROM ats_keywords WHERE user_email = ? ORDER BY frequency DESC",
+                (user_email,),
+            )
+        cols = ["id", "user_email", "keyword", "category", "frequency", "status", "extracted_at", "updated_at"]
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(zip(cols, row)) for row in rows]
+    except Exception as e:
+        print(f"SQLite error (get_ats_keywords): {e}")
+        return []
+
+
+def update_keyword_status(user_email, keyword, status):
+    """Set status of a single keyword (pending | approved | rejected)."""
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).isoformat()
+    row_id = f"{user_email}|{keyword}"
+
+    if supabase:
+        try:
+            supabase.table("ats_keywords").update({"status": status, "updated_at": now}).eq("id", row_id).execute()
+        except Exception as e:
+            print(f"Supabase error (update_keyword_status): {e}")
+
+    import sqlite3
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE ats_keywords SET status = ?, updated_at = ? WHERE id = ?",
+            (status, now, row_id),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"SQLite error (update_keyword_status): {e}")
+
+
+def auto_classify_keywords(user_email, min_frequency=5):
+    """
+    Auto-approve keywords with frequency > min_frequency, reject the rest.
+    Returns (approved_count, rejected_count).
+    """
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).isoformat()
+
+    all_kws = get_ats_keywords(user_email)
+    approve_ids = [k["keyword"] for k in all_kws if k["frequency"] > min_frequency]
+    reject_ids  = [k["keyword"] for k in all_kws if k["frequency"] <= min_frequency]
+
+    if supabase:
+        try:
+            if approve_ids:
+                supabase.table("ats_keywords").update({"status": "approved", "updated_at": now}) \
+                    .eq("user_email", user_email).gt("frequency", min_frequency).execute()
+            if reject_ids:
+                supabase.table("ats_keywords").update({"status": "rejected", "updated_at": now}) \
+                    .eq("user_email", user_email).lte("frequency", min_frequency).execute()
+        except Exception as e:
+            print(f"Supabase error (auto_classify): {e}")
+
+    import sqlite3
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE ats_keywords SET status='approved', updated_at=? WHERE user_email=? AND frequency>?",
+            (now, user_email, min_frequency),
+        )
+        cursor.execute(
+            "UPDATE ats_keywords SET status='rejected', updated_at=? WHERE user_email=? AND frequency<=?",
+            (now, user_email, min_frequency),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"SQLite error (auto_classify): {e}")
+
+    return len(approve_ids), len(reject_ids)
+
+
+def bulk_update_keyword_status(user_email, keywords, status):
+    """Set status for a list of keyword strings in one shot."""
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).isoformat()
+    if not keywords:
+        return
+
+    ids = [f"{user_email}|{kw}" for kw in keywords]
+
+    if supabase:
+        try:
+            supabase.table("ats_keywords").update({"status": status, "updated_at": now}) \
+                .in_("id", ids).execute()
+        except Exception as e:
+            print(f"Supabase error (bulk_update): {e}")
+
+    import sqlite3
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.executemany(
+            "UPDATE ats_keywords SET status=?, updated_at=? WHERE id=?",
+            [(status, now, rid) for rid in ids],
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"SQLite error (bulk_update): {e}")
+
 
 # Initialize on import
 init_db()

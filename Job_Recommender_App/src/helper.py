@@ -57,7 +57,7 @@ def extract_text_from_pdf(uploaded_file):
 
     return text
 
-def tailor_resume(resume_text, job_description, html_template):
+def tailor_resume(resume_text, job_description, html_template, approved_keywords=None):
     """
     Tailors the resume text to the job description using OpenAI.
     """
@@ -117,6 +117,18 @@ def tailor_resume(resume_text, job_description, html_template):
     - The <strong> styling (navy, bold) is already defined in the CSS — do not add inline styles.
 
     Return the COMPLETE tailored HTML.
+    """
+
+    if approved_keywords:
+        system_prompt += f"""
+    APPROVED ATS KEYWORDS (relevance-filtered injection):
+    {", ".join(approved_keywords)}
+
+    For EACH keyword above, apply this check before using it:
+    - Does the candidate's resume contain evidence of the underlying skill or experience?
+    - If YES → weave the keyword in naturally (rephrase an existing bullet, add to skills section).
+    - If NO → skip this keyword entirely. Do NOT invent experience, projects, or skills to justify it.
+    Only a subset of the approved keywords will be relevant to any given resume. That is expected and correct.
     """
 
     user_prompt = f"""
@@ -313,6 +325,99 @@ def generate_linkedin_dm(resume_text, post_text, author_name=""):
         return ""
 
 
+def extract_ats_keywords(jd_texts: list, progress_callback=None) -> dict:
+    """
+    Extract ATS-boosting keywords from a list of JD texts using 5 parallel workers.
+    progress_callback(completed_batches, total_batches) is called after each batch finishes.
+    Returns {category: {keyword: frequency}} aggregated across all batches.
+    """
+    import json as _json
+    import math
+    import time
+    import random
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    BATCH_SIZE = 15
+    TRUNC      = 1000
+    MAX_WORKERS = 5
+    MAX_RETRIES = 5
+
+    system_prompt = (
+        "You are an ATS keyword extraction specialist. Given a batch of job descriptions, "
+        "extract the most impactful ATS-boosting terms across 4 categories.\n\n"
+        "Return ONLY a valid JSON object with these exact keys:\n"
+        "- power_verbs: action verbs that appear in JDs (Led, Scaled, Optimized, Drove, Launched...)\n"
+        "- technical_skills: tools, platforms, methodologies (SQL, JIRA, OKRs, A/B Testing, Agile...)\n"
+        "- domain_keywords: industry/domain terms (go-to-market, product-market fit, NPS, CAC, LTV...)\n"
+        "- ats_phrases: multi-word phrases recruiters search for (cross-functional collaboration, "
+        "stakeholder management, data-driven decision making...)\n\n"
+        "Rules:\n"
+        "- Only include terms that genuinely appear across multiple JDs in this batch\n"
+        "- 15-25 items per category maximum\n"
+        "- No duplicates, no generic filler words\n"
+        "- Return ONLY the JSON, no explanation"
+    )
+
+    category_map = {
+        "power_verbs":     "power_verb",
+        "technical_skills":"technical_skill",
+        "domain_keywords": "domain_keyword",
+        "ats_phrases":     "ats_phrase",
+    }
+    aggregated = {cat: {} for cat in category_map.values()}
+
+    # Build non-empty batches upfront
+    total_batches = math.ceil(len(jd_texts) / BATCH_SIZE)
+    batches = []
+    for i in range(total_batches):
+        chunk = jd_texts[i * BATCH_SIZE:(i + 1) * BATCH_SIZE]
+        combined = "\n\n---\n\n".join(t[:TRUNC] for t in chunk if t and t.strip())
+        if combined.strip():
+            batches.append((i, combined))
+
+    def _call_api(idx_combined):
+        idx, combined = idx_combined
+        for attempt in range(MAX_RETRIES):
+            try:
+                response = client.chat.completions.create(
+                    model="gpt-4.1",
+                    temperature=0.1,
+                    response_format={"type": "json_object"},
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user",   "content": f"JOB DESCRIPTIONS:\n{combined}"},
+                    ],
+                )
+                return idx, _json.loads(response.choices[0].message.content)
+            except Exception as e:
+                err = str(e)
+                if "429" in err or "rate_limit" in err.lower():
+                    wait = (2 ** attempt) + random.uniform(0.5, 1.5)
+                    time.sleep(wait)
+                else:
+                    print(f"ATS extraction error (batch {idx}, attempt {attempt+1}): {e}")
+                    return idx, {}
+        return idx, {}
+
+    completed = 0
+    total = len(batches)
+
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = {executor.submit(_call_api, b): b[0] for b in batches}
+        for future in as_completed(futures):
+            _, raw = future.result()
+            completed += 1
+            if progress_callback:
+                progress_callback(completed, total)
+            for json_key, db_category in category_map.items():
+                for kw in raw.get(json_key, []):
+                    kw = kw.strip()
+                    if kw:
+                        aggregated[db_category][kw] = aggregated[db_category].get(kw, 0) + 1
+
+    return aggregated
+
+
 def ask_openai(prompt, max_tokens=1000):
     """
     Sends a prompt to the OpenAI API and returns the response.
@@ -331,4 +436,46 @@ def ask_openai(prompt, max_tokens=1000):
     except Exception as e:
         print(f"Error communicating with OpenAI: {e}")
         return ""
+
+
+def generate_search_titles(resume_summary: str) -> dict:
+    """
+    Returns {"current_title": str, "search_titles": [str, ...]} ordered as:
+      [0] exact current designation
+      [1-2] aliases / common variants (including Product Owner / Senior Product Owner where applicable)
+      [3-4] one level above
+      [5-6] two levels above
+    """
+    import json
+    prompt = f"""You are a job search expert. Analyse the resume summary below and return a JSON object with exactly two keys:
+
+"current_title": the exact current or most recent job title from the resume (string)
+"search_titles": an ordered list of 6-8 job titles to search, structured as:
+  - Index 0: exact current designation
+  - Index 1-2: common aliases and variants (e.g. for a Product Manager role, include "Product Owner" and "Senior Product Owner" as aliases)
+  - Index 3-4: titles one level above current (e.g. Senior / Lead equivalents)
+  - Index 5-6: titles two levels above current (e.g. Director / Group-level equivalents)
+  If the resume shows strong AI/ML exposure, include an "AI Product Manager" or equivalent AI variant.
+  Keep each title concise (2-5 words). No explanations in the list — only job title strings.
+
+Resume summary:
+{resume_summary}
+
+Return ONLY valid JSON, no explanation, no markdown."""
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            temperature=0.1,
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that returns only valid JSON."},
+                {"role": "user", "content": prompt},
+            ],
+            max_tokens=300,
+        )
+        return json.loads(response.choices[0].message.content)
+    except Exception as e:
+        print(f"generate_search_titles error: {e}")
+        return {"current_title": "Product Manager", "search_titles": ["Product Manager", "Senior Product Manager"]}
 
