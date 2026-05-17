@@ -62,6 +62,15 @@ JOB_CARD_CSS = """
 .stExpander { border: none !important; box-shadow: none !important; margin-bottom: 20px !important; }
 .stExpander > div { border: 1px solid #e1e4e8 !important; border-top: none !important;
     border-bottom-left-radius: 12px !important; border-bottom-right-radius: 12px !important; }
+
+.poster-link { color: #0a66c2; text-decoration: none; font-size: 13px; }
+.poster-link:hover { text-decoration: underline; }
+.msg-poster-btn {
+    display: inline-block; padding: 6px 14px; border-radius: 20px;
+    background: #e8f0fe; color: #1a73e8; font-size: 13px;
+    text-decoration: none !important; border: 1px solid #c5d8ff; margin: 0 6px;
+}
+.msg-poster-btn:hover { background: #d2e3fc; }
 </style>
 """
 
@@ -156,8 +165,9 @@ def _cover_letter_tab(resume_text, full_desc, company, job_title, candidate_name
 
 
 def _actions_block(job_id, source, full_desc, company, job_title,
-                   resume_text, candidate_name, key_prefix):
-    """Applied chip toggle + single ⚡ Actions expander with 3 tabs."""
+                   resume_text, candidate_name, key_prefix,
+                   poster_name="", poster_url=""):
+    """Applied chip toggle + single ⚡ Actions expander with tabs."""
     from src.database import toggle_job_application
 
     applied_ids = st.session_state.get("applied_job_ids", set())
@@ -177,15 +187,49 @@ def _actions_block(job_id, source, full_desc, company, job_title,
             st.session_state["applied_job_ids"] = applied_ids
             st.rerun()
 
-    # Single Actions expander
+    # Actions expander — 4 tabs when poster DM is available, 3 otherwise
     with st.expander("⚡ Actions"):
-        tab1, tab2, tab3 = st.tabs(["📄 Tailor Resume", "✍️ Cover Letter", "📖 Full JD"])
+        if poster_url:
+            tab1, tab2, tab3, tab4 = st.tabs(["📄 Tailor Resume", "✍️ Cover Letter", "📖 Full JD", "💬 DM Poster"])
+        else:
+            tab1, tab2, tab3 = st.tabs(["📄 Tailor Resume", "✍️ Cover Letter", "📖 Full JD"])
+            tab4 = None
+
         with tab1:
             _tailor_tab(resume_text, full_desc, company, candidate_name, key_prefix)
         with tab2:
             _cover_letter_tab(resume_text, full_desc, company, job_title, candidate_name, key_prefix)
         with tab3:
             st.markdown(f"<div class='full-jd-box'>{full_desc}</div>", unsafe_allow_html=True)
+
+        if tab4 is not None:
+            with tab4:
+                if poster_name:
+                    st.caption(f"Personalised for **{poster_name}**")
+                else:
+                    st.caption("Poster name unavailable — message will use a generic greeting.")
+                dm_state_key = f"poster_dm_{key_prefix}"
+                profile   = st.session_state.get("active_profile") or {}
+                c_website = profile.get("candidate_website", "")
+                c_github  = profile.get("candidate_github",  "")
+                if st.button("✨ Generate Message", key=f"gen_pdm_{key_prefix}"):
+                    from src.helper import generate_poster_dm
+                    with st.spinner("Writing your LinkedIn message…"):
+                        dm = generate_poster_dm(
+                            resume_text, job_title, company,
+                            poster_name, candidate_name,
+                            c_website, c_github,
+                        )
+                    st.session_state[dm_state_key] = dm
+                if st.session_state.get(dm_state_key):
+                    st.text_area(
+                        "Copy and send on LinkedIn:",
+                        value=st.session_state[dm_state_key],
+                        height=230,
+                        key=f"pdm_area_{key_prefix}",
+                        label_visibility="collapsed",
+                    )
+                    st.caption(f"[Open poster's profile ↗]({poster_url})")
 
 
 # ── Card renderers ─────────────────────────────────────────────────────────────
@@ -201,6 +245,30 @@ def render_linkedin_card(job, idx, resume_text, candidate_name, key_prefix="l"):
     full_desc   = clean_html(job.get('jobDescription') or job.get('description') or "No description provided.")
     desc_preview = full_desc[:200] + "..." if len(full_desc) > 200 else full_desc
     job_id      = str(job.get('jobId') or job.get('id') or job.get('url') or idx)
+
+    # Poster info
+    poster_name = job.get("posterFullName") or ""
+    poster_url  = job.get("posterProfileUrl") or ""
+    if poster_name and poster_url:
+        poster_html = (
+            f'<div class="meta-row" style="margin-top:4px;">'
+            f'<div class="meta-item">👤 Posted by: '
+            f'<a href="{poster_url}" target="_blank" class="poster-link">{poster_name} ↗</a>'
+            f'</div></div>'
+        )
+    elif poster_name:
+        poster_html = (
+            f'<div class="meta-row" style="margin-top:4px;">'
+            f'<div class="meta-item">👤 Posted by: {poster_name}</div></div>'
+        )
+    else:
+        poster_html = (
+            '<div class="meta-row" style="margin-top:4px;">'
+            '<div class="meta-item" style="color:#bbb;">👤 Poster info not available</div></div>'
+        )
+    msg_poster_btn = (
+        f'<a href="{poster_url}" target="_blank" class="msg-poster-btn">💬 Message Poster</a>'
+    ) if poster_url else ""
 
     applied_ids = st.session_state.get("applied_job_ids", set())
     is_applied  = str(job_id) in applied_ids
@@ -222,15 +290,18 @@ def render_linkedin_card(job, idx, resume_text, candidate_name, key_prefix="l"):
   <div class="meta-item">📍 {job.get('location','Global')}</div>
   <div class="meta-item">🕒 {posted_time}</div>
 </div>
+{poster_html}
 <div class="description-preview">{desc_preview}</div>
 <div class="card-footer">
   <a href="{job_url}" target="_blank" class="view-link">🔗 View Job</a>
+  {msg_poster_btn}
   <a href="{job_url}" target="_blank" class="apply-btn">Apply Now</a>
 </div>
 </div></div></div>""", unsafe_allow_html=True)
 
     _actions_block(job_id, "linkedin", full_desc, company, job.get('title', ''),
-                   resume_text, candidate_name, key_prefix=f"{key_prefix}_l_{idx}")
+                   resume_text, candidate_name, key_prefix=f"{key_prefix}_l_{idx}",
+                   poster_name=poster_name, poster_url=poster_url)
 
 
 def render_naukri_card(job, idx, resume_text, candidate_name, key_prefix="n"):

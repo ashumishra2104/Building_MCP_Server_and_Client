@@ -325,6 +325,55 @@ def generate_linkedin_dm(resume_text, post_text, author_name=""):
         return ""
 
 
+def generate_poster_dm(resume_text, job_title, company, poster_name,
+                        candidate_name, candidate_website="", candidate_github=""):
+    """Generate a ready-to-send LinkedIn DM to a job poster."""
+    salutation = f"Hi {poster_name.split()[0]}," if poster_name.strip() else "Hi,"
+
+    sig_lines = [candidate_name]
+    if candidate_website:
+        sig_lines.append(candidate_website)
+    if candidate_github:
+        sig_lines.append(candidate_github)
+    signature = "\n".join(sig_lines)
+
+    system_prompt = (
+        "You are a LinkedIn outreach specialist. Write ONLY 2-3 sentences explaining "
+        "why the candidate is a strong fit for the role, based on their resume.\n\n"
+        "RULES:\n"
+        "- Be specific — reference actual skills or achievements from the resume.\n"
+        "- Never invent anything not in the resume.\n"
+        "- Tone: warm, confident, NOT salesy.\n"
+        "- Output ONLY the 2-3 fit sentences. No greeting, no opening line, no sign-off."
+    )
+    user_prompt = (
+        f"ROLE: {job_title} at {company}\n\n"
+        f"RESUME:\n{resume_text[:3000]}"
+    )
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user",   "content": user_prompt},
+            ],
+            max_tokens=150,
+            temperature=0.4,
+        )
+        fit_lines = response.choices[0].message.content.strip()
+    except Exception as e:
+        print(f"Error generating poster DM: {e}")
+        fit_lines = "My background closely aligns with this role."
+
+    return (
+        f"{salutation}\n\n"
+        f"I recently came across the {job_title} opening at {company} and wanted to reach out.\n\n"
+        f"{fit_lines}\n\n"
+        f"Looking forward to hearing from you.\n\n"
+        f"{signature}"
+    )
+
+
 def extract_ats_keywords(jd_texts: list, progress_callback=None) -> dict:
     """
     Extract ATS-boosting keywords from a list of JD texts using 5 parallel workers.

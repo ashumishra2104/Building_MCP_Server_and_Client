@@ -1,6 +1,6 @@
 import streamlit as st
 from src.helper import extract_text_from_pdf, ask_openai
-from src.database import save_user_profile, get_active_profile, delete_user_profile
+from src.database import save_user_profile, get_active_profile, delete_user_profile, save_user_settings, get_user_settings
 
 USER_EMAIL = "demo@nomail.com"
 
@@ -171,3 +171,96 @@ if pending:
         if st.button("✖ Cancel"):
             st.session_state.pop("_pending_profile", None)
             st.rerun()
+
+# ── Scraper Settings ───────────────────────────────────────────────────────────
+st.markdown("---")
+st.subheader("⚙️ Scraper Settings")
+st.caption("Control how many jobs are fetched per Apify search run.")
+
+if "scraper_settings" not in st.session_state:
+    st.session_state["scraper_settings"] = get_user_settings(USER_EMAIL)
+
+settings = st.session_state["scraper_settings"]
+
+linkedin_rows = st.slider(
+    "LinkedIn — jobs per search title (× 3 titles)",
+    min_value=20, max_value=300,
+    value=settings.get("linkedin_rows", 100),
+    step=10,
+    key="slider_linkedin",
+)
+naukri_rows = st.slider(
+    "Naukri — total jobs",
+    min_value=50, max_value=500,
+    value=settings.get("naukri_rows", 150),
+    step=10,
+    key="slider_naukri",
+)
+indeed_rows = st.slider(
+    "Indeed — jobs per search title (× 3 titles)",
+    min_value=20, max_value=200,
+    value=settings.get("indeed_rows", 75),
+    step=5,
+    key="slider_indeed",
+)
+
+st.caption(
+    f"Current totals: LinkedIn up to **{linkedin_rows * 3}** · "
+    f"Naukri **{naukri_rows}** · "
+    f"Indeed up to **{indeed_rows * 3}** unique jobs."
+)
+
+if st.button("💾 Save Settings", type="primary"):
+    if save_user_settings(USER_EMAIL, linkedin_rows, naukri_rows, indeed_rows):
+        st.session_state["scraper_settings"] = {
+            "linkedin_rows": linkedin_rows,
+            "naukri_rows":   naukri_rows,
+            "indeed_rows":   indeed_rows,
+        }
+        st.success("Settings saved!")
+    else:
+        st.error("Failed to save settings.")
+
+# ── Outreach Signature ─────────────────────────────────────────────────────────
+st.markdown("---")
+st.subheader("✍️ Outreach Signature")
+st.caption("Appended to LinkedIn DMs generated for job posters.")
+
+current_website = (profile or {}).get("candidate_website", "") if profile else ""
+current_github  = (profile or {}).get("candidate_github",  "") if profile else ""
+
+candidate_website = st.text_input(
+    "Website / Portfolio URL",
+    value=current_website,
+    placeholder="https://yoursite.com",
+    key="sig_website",
+)
+candidate_github = st.text_input(
+    "GitHub URL",
+    value=current_github,
+    placeholder="https://github.com/yourusername",
+    key="sig_github",
+)
+
+if st.button("💾 Save Signature", type="primary", key="save_sig_btn"):
+    if not profile:
+        st.warning("Save a profile first before adding a signature.")
+    else:
+        with st.spinner("Saving…"):
+            ok = save_user_profile(
+                USER_EMAIL,
+                profile["profile_name"],
+                profile["resume_text"],
+                profile.get("candidate_name"),
+                profile.get("candidate_email"),
+                profile.get("candidate_phone"),
+                profile.get("raw_pdf_name"),
+                candidate_website=candidate_website,
+                candidate_github=candidate_github,
+            )
+        if ok:
+            st.session_state["active_profile"]["candidate_website"] = candidate_website
+            st.session_state["active_profile"]["candidate_github"]  = candidate_github
+            st.success("Signature saved!")
+        else:
+            st.error("Failed to save. Check Supabase connection.")

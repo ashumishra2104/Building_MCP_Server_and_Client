@@ -43,6 +43,12 @@ def init_db():
             raw_data TEXT
         )
     ''')
+    # Migrate: add poster columns if they don't exist yet
+    for col in ("poster_name TEXT", "poster_profile_url TEXT"):
+        try:
+            cursor.execute(f"ALTER TABLE linkedin_jobs_v2 ADD COLUMN {col}")
+        except Exception:
+            pass  # column already exists
 
     # Naukri Table V2
     cursor.execute('''
@@ -90,6 +96,16 @@ def init_db():
         )
     ''')
 
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS user_settings (
+            user_email    TEXT PRIMARY KEY,
+            linkedin_rows INTEGER DEFAULT 100,
+            naukri_rows   INTEGER DEFAULT 150,
+            indeed_rows   INTEGER DEFAULT 75,
+            updated_at    DATETIME
+        )
+    ''')
+
     conn.commit()
     conn.close()
 
@@ -120,16 +136,28 @@ def save_jobs_to_db(source, search_query, jobs_list):
             "fetched_at": timestamp,
             "raw_data": json.dumps(job)
         }
+        if source == "linkedin":
+            record["poster_name"]        = job.get("posterFullName") or None
+            record["poster_profile_url"] = job.get("posterProfileUrl") or None
         db_records.append(record)
 
-    # 1. Try Supabase
+    # 1. Try Supabase (with poster-field retry guard)
     if supabase:
-        try:
-            for record in db_records:
+        saved = 0
+        for record in db_records:
+            try:
                 supabase.table(table_name).upsert(record).execute()
-            print(f"Successfully saved {len(db_records)} jobs to Supabase ({source})")
-        except Exception as e:
-            print(f"Supabase error: {e}. Falling back to SQLite...")
+                saved += 1
+            except Exception:
+                # Retry without poster fields in case Supabase columns haven't been added yet
+                try:
+                    safe = {k: v for k, v in record.items()
+                            if k not in ("poster_name", "poster_profile_url")}
+                    supabase.table(table_name).upsert(safe).execute()
+                    saved += 1
+                except Exception as e2:
+                    print(f"Supabase error ({source}): {e2}")
+        print(f"Saved {saved}/{len(db_records)} jobs to Supabase ({source})")
 
     # 2. Local Fallback (SQLite)
     import sqlite3
@@ -137,11 +165,27 @@ def save_jobs_to_db(source, search_query, jobs_list):
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         for r in db_records:
-            cursor.execute(f'''
-                INSERT OR REPLACE INTO {table_name}
-                (job_id, title, company, location, salary, posted_at, job_description, search_query, fetched_at, raw_data)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (r['job_id'], r['title'], r['company'], r['location'], r['salary'], r['posted_at'], r['job_description'], r['search_query'], r['fetched_at'], r['raw_data']))
+            if source == "linkedin":
+                cursor.execute(
+                    "INSERT OR REPLACE INTO linkedin_jobs_v2 "
+                    "(job_id, title, company, location, salary, posted_at, job_description, "
+                    "search_query, fetched_at, raw_data, poster_name, poster_profile_url) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (r['job_id'], r['title'], r['company'], r['location'], r['salary'],
+                     r['posted_at'], r['job_description'], r['search_query'],
+                     r['fetched_at'], r['raw_data'],
+                     r.get('poster_name'), r.get('poster_profile_url'))
+                )
+            else:
+                cursor.execute(
+                    f"INSERT OR REPLACE INTO {table_name} "
+                    "(job_id, title, company, location, salary, posted_at, job_description, "
+                    "search_query, fetched_at, raw_data) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (r['job_id'], r['title'], r['company'], r['location'], r['salary'],
+                     r['posted_at'], r['job_description'], r['search_query'],
+                     r['fetched_at'], r['raw_data'])
+                )
         conn.commit()
         conn.close()
     except Exception as e:
@@ -430,7 +474,9 @@ def get_applied_job_ids(user_email):
         return set()
 
 
-def save_user_profile(user_email, profile_name, resume_text, candidate_name, candidate_email, candidate_phone, raw_pdf_name):
+def save_user_profile(user_email, profile_name, resume_text, candidate_name,
+                       candidate_email, candidate_phone, raw_pdf_name,
+                       candidate_website="", candidate_github=""):
     """Save (or replace) the single active profile for a user."""
     if not supabase:
         return False
@@ -438,15 +484,17 @@ def save_user_profile(user_email, profile_name, resume_text, candidate_name, can
         from datetime import datetime, timezone
         now = datetime.now(timezone.utc).isoformat()
         record = {
-            "user_email":     user_email,
-            "profile_name":   profile_name,
-            "resume_text":    resume_text,
-            "candidate_name": candidate_name,
-            "candidate_email": candidate_email,
-            "candidate_phone": candidate_phone,
-            "raw_pdf_name":   raw_pdf_name,
-            "is_active":      True,
-            "updated_at":     now,
+            "user_email":        user_email,
+            "profile_name":      profile_name,
+            "resume_text":       resume_text,
+            "candidate_name":    candidate_name,
+            "candidate_email":   candidate_email,
+            "candidate_phone":   candidate_phone,
+            "raw_pdf_name":      raw_pdf_name,
+            "candidate_website": candidate_website or "",
+            "candidate_github":  candidate_github  or "",
+            "is_active":         True,
+            "updated_at":        now,
         }
         # Upsert on user_email — one profile per user
         supabase.table("user_profiles").upsert(record, on_conflict="user_email").execute()
@@ -836,6 +884,67 @@ def bulk_update_keyword_status(user_email, keywords, status):
         conn.close()
     except Exception as e:
         print(f"SQLite error (bulk_update): {e}")
+
+
+_SETTINGS_DEFAULTS = {"linkedin_rows": 100, "naukri_rows": 150, "indeed_rows": 75}
+
+
+def save_user_settings(user_email, linkedin_rows, naukri_rows, indeed_rows):
+    now = datetime.now().isoformat()
+    record = {
+        "user_email":    user_email,
+        "linkedin_rows": int(linkedin_rows),
+        "naukri_rows":   int(naukri_rows),
+        "indeed_rows":   int(indeed_rows),
+        "updated_at":    now,
+    }
+    if supabase:
+        try:
+            supabase.table("user_settings").upsert(record, on_conflict="user_email").execute()
+        except Exception as e:
+            print(f"Supabase error (save_user_settings): {e}")
+    import sqlite3
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute(
+            "INSERT OR REPLACE INTO user_settings (user_email, linkedin_rows, naukri_rows, indeed_rows, updated_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (user_email, record["linkedin_rows"], record["naukri_rows"], record["indeed_rows"], now),
+        )
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"SQLite error (save_user_settings): {e}")
+        return False
+
+
+def get_user_settings(user_email):
+    if supabase:
+        try:
+            result = supabase.table("user_settings").select("*").eq("user_email", user_email).limit(1).execute()
+            if result.data:
+                row = result.data[0]
+                return {
+                    "linkedin_rows": row.get("linkedin_rows", _SETTINGS_DEFAULTS["linkedin_rows"]),
+                    "naukri_rows":   row.get("naukri_rows",   _SETTINGS_DEFAULTS["naukri_rows"]),
+                    "indeed_rows":   row.get("indeed_rows",   _SETTINGS_DEFAULTS["indeed_rows"]),
+                }
+        except Exception as e:
+            print(f"Supabase error (get_user_settings): {e}")
+    import sqlite3
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        row = conn.execute(
+            "SELECT linkedin_rows, naukri_rows, indeed_rows FROM user_settings WHERE user_email=?",
+            (user_email,),
+        ).fetchone()
+        conn.close()
+        if row:
+            return {"linkedin_rows": row[0], "naukri_rows": row[1], "indeed_rows": row[2]}
+    except Exception as e:
+        print(f"SQLite error (get_user_settings): {e}")
+    return dict(_SETTINGS_DEFAULTS)
 
 
 # Initialize on import

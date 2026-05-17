@@ -2,7 +2,7 @@ import streamlit as st
 import os
 from src.helper import extract_text_from_pdf, ask_openai, generate_search_titles
 from src.job_api import fetch_linkedin_jobs, fetch_naukri_jobs, fetch_indeed_jobs
-from src.database import init_db
+from src.database import init_db, get_user_settings
 from src.ui_components import JOB_CARD_CSS, render_linkedin_card, render_naukri_card, render_indeed_card
 
 APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -94,6 +94,11 @@ if uploaded_file:
     st.caption("This fetches live jobs from LinkedIn, Naukri and Indeed using the Apify API.")
 
     if st.button("🧲 Get Job Recommendations"):
+        settings      = st.session_state.get("scraper_settings") or get_user_settings("demo@nomail.com")
+        linkedin_rows = settings.get("linkedin_rows", 100)
+        naukri_rows   = settings.get("naukri_rows",   150)
+        indeed_rows   = settings.get("indeed_rows",    75)
+
         with st.spinner("Analysing profile for best search titles…"):
             config        = generate_search_titles(resume_summary)
             search_titles = config.get("search_titles", ["Product Manager"])
@@ -106,7 +111,7 @@ if uploaded_file:
         with st.spinner(f"LinkedIn — searching: {' · '.join(linkedin_titles)}"):
             all_linkedin, seen_linkedin = [], set()
             for title in linkedin_titles:
-                for job in (fetch_linkedin_jobs(title, rows=40) or []):
+                for job in (fetch_linkedin_jobs(title, rows=linkedin_rows) or []):
                     jid = str(job.get("jobId") or job.get("id") or job.get("url") or "")
                     if not jid or jid not in seen_linkedin:
                         if jid:
@@ -118,7 +123,7 @@ if uploaded_file:
         # ── Naukri: all titles joined as one keyword string ───────────────────
         naukri_query = " ".join(search_titles[:5])
         with st.spinner(f"Naukri — searching: {naukri_query}"):
-            st.session_state["naukri_jobs"]  = fetch_naukri_jobs(naukri_query, rows=60)
+            st.session_state["naukri_jobs"]  = fetch_naukri_jobs(naukri_query, rows=naukri_rows)
             st.session_state["naukri_query"] = naukri_query
 
         # ── Indeed: 3 separate searches, dedup by id/url ─────────────────────
@@ -126,7 +131,7 @@ if uploaded_file:
         with st.spinner(f"Indeed — searching: {' · '.join(indeed_titles)}"):
             all_indeed, seen_indeed = [], set()
             for title in indeed_titles:
-                for job in (fetch_indeed_jobs(title, location="India", country="IN", rows=30) or []):
+                for job in (fetch_indeed_jobs(title, location="India", country="IN", rows=indeed_rows) or []):
                     jid = str(job.get("id") or job.get("url") or "")
                     if not jid or jid not in seen_indeed:
                         if jid:

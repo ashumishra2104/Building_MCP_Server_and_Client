@@ -142,7 +142,7 @@ filtered_all      = [(j, "linkedin") for j in filtered_linkedin] + \
 
 
 # ── Pagination helper ──────────────────────────────────────────────────────────
-def show_paginated(jobs, source, key_prefix):
+def show_paginated(jobs, source, key_prefix, extra_sig=""):
     total = len(jobs)
     if total == 0:
         st.info("No jobs match your current filters.")
@@ -154,7 +154,7 @@ def show_paginated(jobs, source, key_prefix):
         st.session_state[page_key] = 1
 
     # Reset to page 1 when filters change
-    filter_sig = f"{title_query}|{'|'.join(sorted(selected_cities))}"
+    filter_sig = f"{title_query}|{'|'.join(sorted(selected_cities))}|{extra_sig}"
     sig_key = f"sig_{key_prefix}"
     if st.session_state.get(sig_key) != filter_sig:
         st.session_state[page_key] = 1
@@ -255,8 +255,16 @@ with tab_naukri:
     show_paginated(filtered_naukri, "naukri", key_prefix="sn")
 
 with tab_linkedin:
-    st.caption(f"{len(filtered_linkedin)} jobs")
-    show_paginated(filtered_linkedin, "linkedin", key_prefix="sl")
+    poster_only = st.toggle("👤 Only show jobs with poster info", key="filter_poster")
+    if poster_only:
+        display_linkedin = [
+            j for j in filtered_linkedin
+            if j.get("posterFullName") or j.get("posterProfileUrl")
+        ]
+    else:
+        display_linkedin = filtered_linkedin
+    st.caption(f"{len(display_linkedin)} jobs")
+    show_paginated(display_linkedin, "linkedin", key_prefix="sl", extra_sig=str(poster_only))
 
 with tab_indeed:
     st.caption(f"{len(filtered_indeed)} jobs")
