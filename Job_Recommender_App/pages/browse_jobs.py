@@ -95,7 +95,7 @@ with col_city:
         placeholder="Select one or more cities…",
     )
 
-col_refresh, col_status = st.columns([1, 4])
+col_refresh, col_status, col_remote = st.columns([1, 3, 1])
 with col_refresh:
     if st.button("🔄 Refresh DB"):
         for key in ("db_linkedin_jobs", "db_naukri_jobs", "db_indeed_jobs", "db_linkedin_posts",
@@ -109,6 +109,8 @@ with col_status:
         horizontal=True,
         label_visibility="collapsed",
     )
+with col_remote:
+    remote_only = st.toggle("🌍 Remote only", key="filter_remote")
 
 st.markdown("---")
 
@@ -120,6 +122,23 @@ def _job_id(job, source):
         return str(job.get("id") or "")
     return str(job.get("jobId") or job.get("id") or job.get("url") or "")
 
+def is_remote_job(job, source):
+    loc = (job.get("location") or "").lower()
+    if "remote" in loc:
+        return True
+    if source == "indeed":
+        import json as _jt
+        job_types = job.get("jobType") or []
+        if isinstance(job_types, str):
+            try:
+                job_types = _jt.loads(job_types)
+            except Exception:
+                job_types = [job_types]
+        if any("remote" in str(t).lower() for t in job_types):
+            return True
+    desc = (job.get("jobDescription") or job.get("description") or "").lower()
+    return "remote" in desc[:500]
+
 def apply_filters(jobs, title_field="title", source="linkedin"):
     filtered = jobs
     if title_query:
@@ -127,6 +146,8 @@ def apply_filters(jobs, title_field="title", source="linkedin"):
         filtered = [j for j in filtered if q in (j.get(title_field) or "").lower()]
     if selected_cities:
         filtered = [j for j in filtered if job_matches_cities(j, selected_cities)]
+    if remote_only:
+        filtered = [j for j in filtered if is_remote_job(j, source)]
     if status_filter == "Applied":
         filtered = [j for j in filtered if _job_id(j, source) in applied_ids]
     elif status_filter == "Not Applied":
@@ -252,7 +273,7 @@ tab_naukri, tab_linkedin, tab_indeed, tab_all, tab_posts = st.tabs([
 
 with tab_naukri:
     st.caption(f"{len(filtered_naukri)} jobs")
-    show_paginated(filtered_naukri, "naukri", key_prefix="sn")
+    show_paginated(filtered_naukri, "naukri", key_prefix="sn", extra_sig=str(remote_only))
 
 with tab_linkedin:
     poster_only = st.toggle("👤 Only show jobs with poster info", key="filter_poster")
@@ -264,15 +285,15 @@ with tab_linkedin:
     else:
         display_linkedin = filtered_linkedin
     st.caption(f"{len(display_linkedin)} jobs")
-    show_paginated(display_linkedin, "linkedin", key_prefix="sl", extra_sig=str(poster_only))
+    show_paginated(display_linkedin, "linkedin", key_prefix="sl", extra_sig=f"{poster_only}|{remote_only}")
 
 with tab_indeed:
     st.caption(f"{len(filtered_indeed)} jobs")
-    show_paginated(filtered_indeed, "indeed", key_prefix="si")
+    show_paginated(filtered_indeed, "indeed", key_prefix="si", extra_sig=str(remote_only))
 
 with tab_all:
     st.caption(f"{len(filtered_all)} jobs")
-    show_paginated(filtered_all, "all", key_prefix="sa")
+    show_paginated(filtered_all, "all", key_prefix="sa", extra_sig=str(remote_only))
 
 with tab_posts:
     st.caption(f"{len(filtered_posts)} posts")

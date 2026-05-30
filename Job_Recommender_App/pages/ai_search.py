@@ -2,7 +2,7 @@ import streamlit as st
 import os
 from src.helper import extract_text_from_pdf, ask_openai, generate_search_titles
 from src.job_api import fetch_linkedin_jobs, fetch_naukri_jobs, fetch_indeed_jobs
-from src.database import init_db, get_user_settings
+from src.database import init_db, get_user_settings, get_applied_job_ids
 from src.ui_components import JOB_CARD_CSS, render_linkedin_card, render_naukri_card, render_indeed_card
 
 APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -139,6 +139,37 @@ if uploaded_file:
                         all_indeed.append(job)
             st.session_state["indeed_jobs"]  = all_indeed
             st.session_state["indeed_query"] = " · ".join(indeed_titles)
+
+    # ── Fetch summary ─────────────────────────────────────────────────────────
+    has_any = any(k in st.session_state for k in ("linkedin_jobs", "naukri_jobs", "indeed_jobs"))
+    if has_any:
+        if "applied_job_ids" not in st.session_state:
+            st.session_state["applied_job_ids"] = get_applied_job_ids("demo@nomail.com")
+        applied_ids = st.session_state["applied_job_ids"]
+
+        li_jobs = st.session_state.get("linkedin_jobs", [])
+        na_jobs = st.session_state.get("naukri_jobs",   [])
+        in_jobs = st.session_state.get("indeed_jobs",   [])
+
+        li_applied = sum(1 for i, j in enumerate(li_jobs)
+                         if str(j.get("jobId") or j.get("id") or j.get("url") or i) in applied_ids)
+        na_applied = sum(1 for i, j in enumerate(na_jobs)
+                         if str(j.get("jobId", i)) in applied_ids)
+        in_applied = sum(1 for i, j in enumerate(in_jobs)
+                         if str(j.get("id", i)) in applied_ids)
+
+        total      = len(li_jobs) + len(na_jobs) + len(in_jobs)
+        total_applied = li_applied + na_applied + in_applied
+
+        st.markdown("---")
+        st.subheader("📊 Fetch Summary")
+        c0, c1, c2, c3 = st.columns(4)
+        c0.metric("Total Fetched", total, help="Across all three sources")
+        c1.metric("LinkedIn", len(li_jobs), f"{li_applied} applied" if li_applied else "0 applied")
+        c2.metric("Naukri",   len(na_jobs), f"{na_applied} applied" if na_applied else "0 applied")
+        c3.metric("Indeed",   len(in_jobs), f"{in_applied} applied" if in_applied else "0 applied")
+        if total_applied:
+            st.info(f"✅ You've already applied to **{total_applied}** of these {total} jobs — they'll show the Applied badge on their cards.")
 
     if "linkedin_jobs" in st.session_state:
         st.markdown("---")
