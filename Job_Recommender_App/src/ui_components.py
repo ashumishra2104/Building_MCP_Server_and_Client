@@ -187,13 +187,15 @@ def _actions_block(job_id, source, full_desc, company, job_title,
             st.session_state["applied_job_ids"] = applied_ids
             st.rerun()
 
-    # Actions expander — 4 tabs when poster DM is available, 3 otherwise
+    # Actions expander — 5 tabs when poster URL is available, 3 otherwise
     with st.expander("⚡ Actions"):
         if poster_url:
-            tab1, tab2, tab3, tab4 = st.tabs(["📄 Tailor Resume", "✍️ Cover Letter", "📖 Full JD", "💬 DM Poster"])
+            tab1, tab2, tab3, tab4, tab5 = st.tabs([
+                "📄 Tailor Resume", "✍️ Cover Letter", "📖 Full JD", "💬 DM Poster", "📧 Email"
+            ])
         else:
             tab1, tab2, tab3 = st.tabs(["📄 Tailor Resume", "✍️ Cover Letter", "📖 Full JD"])
-            tab4 = None
+            tab4 = tab5 = None
 
         with tab1:
             _tailor_tab(resume_text, full_desc, company, candidate_name, key_prefix)
@@ -230,6 +232,21 @@ def _actions_block(job_id, source, full_desc, company, job_title,
                         label_visibility="collapsed",
                     )
                     st.caption(f"[Open poster's profile ↗]({poster_url})")
+
+        if tab5 is not None:
+            with tab5:
+                email_key = f"poster_email_{key_prefix}"
+                if st.button("🔍 Look up email", key=f"find_email_{key_prefix}"):
+                    from src.job_api import fetch_poster_email
+                    with st.spinner("Searching for email…"):
+                        found = fetch_poster_email(poster_url)
+                    st.session_state[email_key] = found or "__not_found__"
+                res = st.session_state.get(email_key)
+                if res == "__not_found__":
+                    st.warning("No email found for this profile.")
+                elif res:
+                    st.success(f"📧 {res}")
+                    st.code(res)
 
 
 # ── Card renderers ─────────────────────────────────────────────────────────────
@@ -299,9 +316,11 @@ def render_linkedin_card(job, idx, resume_text, candidate_name, key_prefix="l"):
 </div>
 </div></div></div>""", unsafe_allow_html=True)
 
+    lk = f"{key_prefix}_l_{idx}"
     _actions_block(job_id, "linkedin", full_desc, company, job.get('title', ''),
-                   resume_text, candidate_name, key_prefix=f"{key_prefix}_l_{idx}",
+                   resume_text, candidate_name, key_prefix=lk,
                    poster_name=poster_name, poster_url=poster_url)
+
 
 
 def render_naukri_card(job, idx, resume_text, candidate_name, key_prefix="n"):
@@ -385,6 +404,7 @@ def render_naukri_card(job, idx, resume_text, candidate_name, key_prefix="n"):
                             st.rerun()
                         else:
                             st.error("Failed to fetch full description.")
+
 
 
 def render_indeed_card(job, idx, resume_text, candidate_name, key_prefix="i"):

@@ -154,6 +154,19 @@ def fetch_linkedin_posts(max_results=30):
         return 0, 0
 
 
+def fetch_poster_email(profile_url: str) -> str:
+    """Return email for a LinkedIn profile URL, or empty string on failure."""
+    try:
+        run = apify_client.actor("anchor/linkedin-to-email").call(
+            run_input={"startUrls": [{"url": profile_url}]}
+        )
+        items = list(apify_client.dataset(run["defaultDatasetId"]).iterate_items())
+        return (items[0].get("email") or "") if items else ""
+    except Exception as e:
+        print(f"fetch_poster_email error: {e}")
+        return ""
+
+
 def _show_apify_error(source: str, raw_msg: str):
     is_paid = "rent" in raw_msg.lower() or "trial" in raw_msg.lower() or "redacted" in raw_msg.lower()
     if is_paid:
