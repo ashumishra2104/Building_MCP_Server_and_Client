@@ -102,7 +102,30 @@ def init_db():
             linkedin_rows INTEGER DEFAULT 100,
             naukri_rows   INTEGER DEFAULT 150,
             indeed_rows   INTEGER DEFAULT 75,
+            apify_api_key TEXT,
             updated_at    DATETIME
+        )
+    ''')
+    # Migrate: add apify_api_key column if it doesn't exist yet
+    try:
+        cursor.execute("ALTER TABLE user_settings ADD COLUMN apify_api_key TEXT")
+    except Exception:
+        pass  # column already exists
+
+    # STAR Achievement Bank
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS star_achievements (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_email   TEXT NOT NULL,
+            company      TEXT NOT NULL,
+            project_name TEXT NOT NULL,
+            situation    TEXT,
+            task         TEXT,
+            action       TEXT,
+            result       TEXT,
+            source_file  TEXT,
+            uploaded_at  DATETIME,
+            UNIQUE(user_email, company, project_name)
         )
     ''')
 
@@ -886,30 +909,40 @@ def bulk_update_keyword_status(user_email, keywords, status):
         print(f"SQLite error (bulk_update): {e}")
 
 
-_SETTINGS_DEFAULTS = {"linkedin_rows": 100, "naukri_rows": 150, "indeed_rows": 75}
+_SETTINGS_DEFAULTS = {"linkedin_rows": 100, "naukri_rows": 150, "indeed_rows": 75, "apify_api_key": ""}
 
 
-def save_user_settings(user_email, linkedin_rows, naukri_rows, indeed_rows):
+def save_user_settings(user_email, linkedin_rows, naukri_rows, indeed_rows, apify_api_key=None):
     now = datetime.now().isoformat()
+    if apify_api_key is None:
+        apify_api_key = get_user_settings(user_email).get("apify_api_key", "")
     record = {
         "user_email":    user_email,
         "linkedin_rows": int(linkedin_rows),
         "naukri_rows":   int(naukri_rows),
         "indeed_rows":   int(indeed_rows),
+        "apify_api_key": apify_api_key or "",
         "updated_at":    now,
     }
     if supabase:
         try:
             supabase.table("user_settings").upsert(record, on_conflict="user_email").execute()
-        except Exception as e:
-            print(f"Supabase error (save_user_settings): {e}")
+        except Exception:
+            # Retry without apify_api_key in case the Supabase column hasn't been added yet
+            try:
+                safe = {k: v for k, v in record.items() if k != "apify_api_key"}
+                supabase.table("user_settings").upsert(safe, on_conflict="user_email").execute()
+            except Exception as e2:
+                print(f"Supabase error (save_user_settings): {e2}")
     import sqlite3
     try:
         conn = sqlite3.connect(DB_PATH)
         conn.execute(
-            "INSERT OR REPLACE INTO user_settings (user_email, linkedin_rows, naukri_rows, indeed_rows, updated_at) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (user_email, record["linkedin_rows"], record["naukri_rows"], record["indeed_rows"], now),
+            "INSERT OR REPLACE INTO user_settings "
+            "(user_email, linkedin_rows, naukri_rows, indeed_rows, apify_api_key, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (user_email, record["linkedin_rows"], record["naukri_rows"], record["indeed_rows"],
+             record["apify_api_key"], now),
         )
         conn.commit()
         conn.close()
@@ -929,6 +962,7 @@ def get_user_settings(user_email):
                     "linkedin_rows": row.get("linkedin_rows", _SETTINGS_DEFAULTS["linkedin_rows"]),
                     "naukri_rows":   row.get("naukri_rows",   _SETTINGS_DEFAULTS["naukri_rows"]),
                     "indeed_rows":   row.get("indeed_rows",   _SETTINGS_DEFAULTS["indeed_rows"]),
+                    "apify_api_key": row.get("apify_api_key", _SETTINGS_DEFAULTS["apify_api_key"]) or "",
                 }
         except Exception as e:
             print(f"Supabase error (get_user_settings): {e}")
@@ -936,15 +970,137 @@ def get_user_settings(user_email):
     try:
         conn = sqlite3.connect(DB_PATH)
         row = conn.execute(
-            "SELECT linkedin_rows, naukri_rows, indeed_rows FROM user_settings WHERE user_email=?",
+            "SELECT linkedin_rows, naukri_rows, indeed_rows, apify_api_key FROM user_settings WHERE user_email=?",
             (user_email,),
         ).fetchone()
         conn.close()
         if row:
-            return {"linkedin_rows": row[0], "naukri_rows": row[1], "indeed_rows": row[2]}
+            return {"linkedin_rows": row[0], "naukri_rows": row[1], "indeed_rows": row[2],
+                     "apify_api_key": row[3] or ""}
     except Exception as e:
         print(f"SQLite error (get_user_settings): {e}")
     return dict(_SETTINGS_DEFAULTS)
+
+
+# ── STAR Achievement Bank ─────────────────────────────────────────
+
+def save_star_stories(user_email: str, stories: list[dict], source_file: str = "") -> int:
+    """
+    Upsert star stories for a user. Deduplicates by (user_email, company, project_name).
+    Returns number of stories saved.
+    """
+    if not stories:
+        return 0
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).isoformat()
+    saved = 0
+    for s in stories:
+        row = {
+            "user_email":   user_email,
+            "company":      s.get("company", ""),
+            "project_name": s.get("project_name", ""),
+            "situation":    s.get("situation", ""),
+            "task":         s.get("task", ""),
+            "action":       s.get("action", ""),
+            "result":       s.get("result", ""),
+            "source_file":  source_file,
+            "uploaded_at":  now,
+        }
+        if supabase:
+            try:
+                existing = supabase.table("star_achievements") \
+                    .select("id") \
+                    .eq("user_email", user_email) \
+                    .eq("company", s.get("company", "")) \
+                    .eq("project_name", s.get("project_name", "")) \
+                    .execute()
+                if existing.data:
+                    supabase.table("star_achievements") \
+                        .update({k: v for k, v in row.items() if k != "user_email"}) \
+                        .eq("id", existing.data[0]["id"]) \
+                        .execute()
+                else:
+                    supabase.table("star_achievements").insert(row).execute()
+                saved += 1
+                continue
+            except Exception as e:
+                print(f"Supabase error (save_star_stories): {e}")
+        import sqlite3
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            conn.execute("""
+                INSERT INTO star_achievements
+                    (user_email, company, project_name, situation, task, action, result,
+                     source_file, uploaded_at)
+                VALUES (?,?,?,?,?,?,?,?,?)
+                ON CONFLICT(user_email, company, project_name)
+                DO UPDATE SET
+                    situation=excluded.situation, task=excluded.task,
+                    action=excluded.action, result=excluded.result,
+                    source_file=excluded.source_file, uploaded_at=excluded.uploaded_at
+            """, (
+                row["user_email"], row["company"], row["project_name"],
+                row["situation"], row["task"], row["action"], row["result"],
+                row["source_file"], row["uploaded_at"],
+            ))
+            conn.commit()
+            conn.close()
+            saved += 1
+        except Exception as e:
+            print(f"SQLite error (save_star_stories): {e}")
+    return saved
+
+
+def clear_star_stories(user_email: str) -> bool:
+    """Delete all STAR stories for a user. Returns True on success."""
+    ok = False
+    if supabase:
+        try:
+            supabase.table("star_achievements").delete().eq("user_email", user_email).execute()
+            ok = True
+        except Exception as e:
+            print(f"Supabase error (clear_star_stories): {e}")
+    import sqlite3
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute("DELETE FROM star_achievements WHERE user_email=?", (user_email,))
+        conn.commit()
+        conn.close()
+        ok = True
+    except Exception as e:
+        print(f"SQLite error (clear_star_stories): {e}")
+    return ok
+
+
+def get_star_stories(user_email: str) -> list[dict]:
+    """Fetch all STAR stories for a user. Returns [] on failure."""
+    if supabase:
+        try:
+            result = supabase.table("star_achievements") \
+                .select("company, project_name, situation, task, action, result") \
+                .eq("user_email", user_email) \
+                .order("uploaded_at") \
+                .execute()
+            if result.data:
+                return result.data
+        except Exception as e:
+            print(f"Supabase error (get_star_stories): {e}")
+    import sqlite3
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        rows = conn.execute(
+            "SELECT company, project_name, situation, task, action, result "
+            "FROM star_achievements WHERE user_email=? ORDER BY uploaded_at",
+            (user_email,),
+        ).fetchall()
+        conn.close()
+        return [
+            dict(zip(("company", "project_name", "situation", "task", "action", "result"), r))
+            for r in rows
+        ]
+    except Exception as e:
+        print(f"SQLite error (get_star_stories): {e}")
+    return []
 
 
 # Initialize on import

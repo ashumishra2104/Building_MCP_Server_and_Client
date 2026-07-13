@@ -57,7 +57,7 @@ def extract_text_from_pdf(uploaded_file):
 
     return text
 
-def tailor_resume(resume_text, job_description, html_template, approved_keywords=None):
+def tailor_resume(resume_text, job_description, html_template, approved_keywords=None, star_stories=None):
     """
     Tailors the resume text to the job description using OpenAI.
     """
@@ -131,6 +131,10 @@ def tailor_resume(resume_text, job_description, html_template, approved_keywords
     Only a subset of the approved keywords will be relevant to any given resume. That is expected and correct.
     """
 
+    if star_stories:
+        from src.star_bank import build_resume_star_block
+        system_prompt += build_resume_star_block(star_stories)
+
     user_prompt = f"""
     ORIGINAL RESUME TEXT:
     {resume_text}
@@ -149,7 +153,7 @@ def tailor_resume(resume_text, job_description, html_template, approved_keywords
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            temperature=0.3
+            temperature=0.1 if star_stories else 0.3
         )
         return response.choices[0].message.content
     except Exception as e:
@@ -159,22 +163,29 @@ def tailor_resume(resume_text, job_description, html_template, approved_keywords
 def generate_resume_pdf(html_content, output_filename):
     """
     Generates a PDF from HTML content using WeasyPrint.
+    Always writes into the project-root output/ folder.
     """
     try:
         from weasyprint import HTML
+        # Route to output/ folder unless a full absolute path is already given
+        if not os.path.isabs(output_filename):
+            output_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output")
+            os.makedirs(output_dir, exist_ok=True)
+            output_filename = os.path.join(output_dir, os.path.basename(output_filename))
+
         # Remove markdown code blocks if the LLM returned them
         if "```html" in html_content:
             html_content = html_content.split("```html")[1].split("```")[0].strip()
         elif "```" in html_content:
-             html_content = html_content.split("```")[1].split("```")[0].strip()
-        
+            html_content = html_content.split("```")[1].split("```")[0].strip()
+
         HTML(string=html_content).write_pdf(output_filename)
         return True
     except Exception as e:
         print(f"Error generating PDF: {e}")
         return False
 
-def generate_cover_letter(resume_text, job_description, html_template, company="", job_title=""):
+def generate_cover_letter(resume_text, job_description, html_template, company="", job_title="", star_stories=None):
     """
     Generates a filled cover letter HTML from the template using GPT-4o.
     company and job_title are passed explicitly so GPT cannot get them wrong.
@@ -220,6 +231,10 @@ Replace every {{{{PLACEHOLDER}}}} in the template with appropriate content.
 Return ONLY the complete filled HTML. No markdown, no explanation.
 """
 
+    if star_stories:
+        from src.star_bank import build_cover_letter_star_block
+        system_prompt += build_cover_letter_star_block(star_stories)
+
     user_prompt = f"""
 RESUME:
 {resume_text}
@@ -238,7 +253,7 @@ HTML TEMPLATE:
                 {"role": "system", "content": system_prompt},
                 {"role": "user",   "content": user_prompt},
             ],
-            temperature=0.4,
+            temperature=0.3 if star_stories else 0.4,
         )
         filled_html = response.choices[0].message.content
         if "```html" in filled_html:

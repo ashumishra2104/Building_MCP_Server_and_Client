@@ -17,3 +17,5 @@ apify_output.txt
 check_supabase.py
 migrate_debug.py
 supabase/.temp/
+output/
+.claude/

@@ -10,7 +10,8 @@ from src.helper import (
     ask_openai,
     _extract_cover_letter_text,
 )
-from src.database import get_active_profile, get_ats_keywords
+from src.database import get_active_profile, get_ats_keywords, get_star_stories, save_star_stories
+from src.star_bank import parse_star_bank_excel, parse_star_bank_pdf, select_star_stories, validate_metrics
 from src.ui_components import JOB_CARD_CSS
 
 USER_EMAIL = "demo@nomail.com"
@@ -46,6 +47,20 @@ profile = st.session_state.get("active_profile")
 if "ats_approved_keywords" not in st.session_state:
     st.session_state["ats_approved_keywords"] = get_ats_keywords(USER_EMAIL, status="approved")
 approved_keywords = [k["keyword"] for k in st.session_state["ats_approved_keywords"]]
+
+# ── Bootstrap: STAR Achievement Bank ──────────────────────────────
+STAR_BANK_PATH = os.path.join(APP_DIR, "Ashu_STAR_Bank_v2.xlsx")
+if "qa_star_bank" not in st.session_state:
+    stories = get_star_stories(USER_EMAIL)
+    if not stories:
+        # First run — seed from local Excel and persist to DB
+        try:
+            stories = parse_star_bank_excel(STAR_BANK_PATH)
+            if stories:
+                save_star_stories(USER_EMAIL, stories, source_file="Ashu_STAR_Bank_v2.xlsx")
+        except Exception:
+            stories = []
+    st.session_state["qa_star_bank"] = stories
 
 # ── Section 1: Job Description ─────────────────────────────────────
 st.subheader("1. Paste the Job Description")
@@ -119,6 +134,35 @@ if resume_text:
 
 st.markdown("---")
 
+# ── STAR Achievement Bank expander ────────────────────────────────
+with st.expander("⭐ STAR Achievement Bank", expanded=False):
+    star_bank = st.session_state.get("qa_star_bank", [])
+    if star_bank:
+        st.caption(f"{len(star_bank)} achievement stories loaded. Best matches will be auto-woven into your resume and cover letter.")
+    else:
+        st.caption("No stories loaded. Upload your STAR bank below.")
+
+    star_upload = st.file_uploader(
+        "Upload a different STAR bank (.xlsx or .pdf)",
+        type=["xlsx", "pdf"],
+        key="qa_star_upload",
+    )
+    if star_upload:
+        if star_upload.name != st.session_state.get("qa_last_star_upload", ""):
+            with st.spinner("Parsing STAR bank…"):
+                raw = star_upload.read()
+                parsed = parse_star_bank_pdf(raw) if star_upload.name.endswith(".pdf") \
+                    else parse_star_bank_excel(raw)
+            if parsed:
+                save_star_stories(USER_EMAIL, parsed, source_file=star_upload.name)
+                st.session_state["qa_star_bank"] = get_star_stories(USER_EMAIL)
+                st.session_state["qa_last_star_upload"] = star_upload.name
+                st.success(f"Loaded {len(parsed)} stories from {star_upload.name}.")
+            else:
+                st.warning("Could not parse stories from the uploaded file.")
+
+st.markdown("---")
+
 # ── Section 3: Action buttons ──────────────────────────────────────
 st.subheader("3. Generate")
 
@@ -144,8 +188,14 @@ if resume_clicked:
         try:
             with open(os.path.join(APP_DIR, "resume_template.html")) as f:
                 html_template = f.read()
-            tailored_html = tailor_resume(resume_text, jd, html_template,
-                                          approved_keywords=approved_keywords or None)
+            _star_bank    = st.session_state.get("qa_star_bank", [])
+            _star_stories = select_star_stories(jd, _star_bank) if _star_bank else []
+            st.session_state["qa_selected_stories"] = _star_stories
+            tailored_html = tailor_resume(
+                resume_text, jd, html_template,
+                approved_keywords=approved_keywords or None,
+                star_stories=_star_stories or None,
+            )
             st.session_state["qa_tailored_html"] = tailored_html
         except Exception as e:
             st.error(f"Resume tailoring error: {e}")
@@ -153,8 +203,18 @@ if resume_clicked:
 if st.session_state.get("qa_tailored_html"):
     safe_name = candidate_name.replace(" ", "_")
     pdf_name  = f"{safe_name}_Tailored_Resume.pdf"
+    pdf_path  = os.path.join(APP_DIR, "output", pdf_name)
     if generate_resume_pdf(st.session_state["qa_tailored_html"], pdf_name):
-        with open(pdf_name, "rb") as f:
+        _sel = st.session_state.get("qa_selected_stories", [])
+        if _sel:
+            missing = validate_metrics(_sel, st.session_state["qa_tailored_html"])
+            if missing:
+                st.warning(
+                    f"⚠️ {len(missing)} metric(s) from your STAR stories could not be verified "
+                    f"verbatim in the resume. Review before sending.",
+                    icon="⚠️",
+                )
+        with open(pdf_path, "rb") as f:
             st.download_button("⬇ Download Resume PDF", f.read(),
                                file_name=pdf_name, mime="application/pdf",
                                key="dl_qa_resume")
@@ -178,8 +238,14 @@ if cl_clicked:
 
             with open(os.path.join(APP_DIR, "cover_letter_template.html")) as f:
                 cl_template = f.read()
-            filled_html = generate_cover_letter(resume_text, jd, cl_template,
-                                                company=company, job_title=job_title)
+            _star_bank    = st.session_state.get("qa_star_bank", [])
+            _star_stories = st.session_state.get("qa_selected_stories") \
+                            or (select_star_stories(jd, _star_bank) if _star_bank else [])
+            filled_html = generate_cover_letter(
+                resume_text, jd, cl_template,
+                company=company, job_title=job_title,
+                star_stories=_star_stories or None,
+            )
             st.session_state["qa_cl_html"]    = filled_html
             st.session_state["qa_cl_company"] = company
             st.session_state["qa_cl_title"]   = job_title
@@ -199,8 +265,9 @@ if st.session_state.get("qa_cl_html"):
     safe_name = candidate_name.replace(" ", "_")
     safe_co   = "".join(c for c in company if c.isalnum()) or "Company"
     pdf_name  = f"{safe_name}_CoverLetter_{safe_co}.pdf"
+    pdf_path  = os.path.join(APP_DIR, "output", pdf_name)
     if generate_resume_pdf(filled_html, pdf_name):
-        with open(pdf_name, "rb") as f:
+        with open(pdf_path, "rb") as f:
             st.download_button("⬇ Download Cover Letter PDF", f.read(),
                                file_name=pdf_name, mime="application/pdf",
                                key="dl_qa_cl")

@@ -88,6 +88,7 @@ def clean_html(raw_html):
 def _tailor_tab(resume_text, full_desc, company, candidate_name, key_prefix):
     from src.helper import tailor_resume, generate_resume_pdf
     from src.database import get_ats_keywords
+    from src.star_bank import select_star_stories, validate_metrics
     if not resume_text:
         st.info("Save your resume in My Profile to enable tailoring.")
         return
@@ -105,14 +106,24 @@ def _tailor_tab(resume_text, full_desc, company, candidate_name, key_prefix):
             try:
                 with open(template_path) as f:
                     html_template = f.read()
-                tailored_html = tailor_resume(resume_text, full_desc, html_template,
-                                              approved_keywords=approved_keywords or None)
+                _star_bank    = st.session_state.get("qa_star_bank", [])
+                _star_stories = select_star_stories(full_desc, _star_bank) if _star_bank else []
+                tailored_html = tailor_resume(
+                    resume_text, full_desc, html_template,
+                    approved_keywords=approved_keywords or None,
+                    star_stories=_star_stories or None,
+                )
                 safe_company  = "".join(c for c in company if c.isalnum())
                 pdf_filename  = f"{candidate_name.replace(' ', '_')}_Tailored_{safe_company}.pdf"
+                pdf_path      = os.path.join(APP_DIR, "output", pdf_filename)
                 if tailored_html:
                     if generate_resume_pdf(tailored_html, pdf_filename):
+                        if _star_stories:
+                            missing = validate_metrics(_star_stories, tailored_html)
+                            if missing:
+                                st.warning(f"⚠️ {len(missing)} metric(s) from STAR stories could not be verified verbatim. Review before sending.")
                         st.success(f"✅ Resume tailored for {company}!")
-                        with open(pdf_filename, "rb") as f:
+                        with open(pdf_path, "rb") as f:
                             st.download_button("📩 Download PDF", f, pdf_filename,
                                                mime="application/pdf",
                                                key=f"dl_resume_{key_prefix}")
@@ -126,6 +137,7 @@ def _tailor_tab(resume_text, full_desc, company, candidate_name, key_prefix):
 
 def _cover_letter_tab(resume_text, full_desc, company, job_title, candidate_name, key_prefix):
     from src.helper import generate_cover_letter, _extract_cover_letter_text, generate_resume_pdf
+    from src.star_bank import select_star_stories
     if not resume_text:
         st.info("Save your resume in My Profile to enable cover letter generation.")
         return
@@ -140,8 +152,13 @@ def _cover_letter_tab(resume_text, full_desc, company, job_title, candidate_name
             st.error("Cover letter template not found.")
             return
         with st.spinner("Writing your cover letter…"):
-            filled_html = generate_cover_letter(resume_text, full_desc, cl_template,
-                                                company=company, job_title=job_title)
+            _star_bank    = st.session_state.get("qa_star_bank", [])
+            _star_stories = select_star_stories(full_desc, _star_bank) if _star_bank else []
+            filled_html = generate_cover_letter(
+                resume_text, full_desc, cl_template,
+                company=company, job_title=job_title,
+                star_stories=_star_stories or None,
+            )
         if filled_html:
             st.session_state[state_key] = filled_html
         else:
@@ -158,8 +175,9 @@ def _cover_letter_tab(resume_text, full_desc, company, job_title, candidate_name
         st.markdown("---")
         safe_company = "".join(c for c in company if c.isalnum())
         pdf_filename = f"{candidate_name.replace(' ', '_')}_CoverLetter_{safe_company}.pdf"
+        pdf_path     = os.path.join(APP_DIR, "output", pdf_filename)
         if generate_resume_pdf(filled_html, pdf_filename):
-            with open(pdf_filename, "rb") as f:
+            with open(pdf_path, "rb") as f:
                 st.download_button("📩 Download Cover Letter PDF", f, pdf_filename,
                                    mime="application/pdf", key=f"dl_cl_{key_prefix}")
 

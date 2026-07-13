@@ -7,9 +7,20 @@ from apify_client.errors import ApifyApiError
 load_dotenv(override=True)
 
 APIFY_API_TOKEN = os.getenv("APIFY_API_TOKEN")
-apify_client = ApifyClient(APIFY_API_TOKEN)
 
-from src.database import save_jobs_to_db, save_linkedin_posts_to_db
+from src.database import save_jobs_to_db, save_linkedin_posts_to_db, get_user_settings
+
+USER_EMAIL = "demo@nomail.com"  # single-user demo app
+
+
+def _get_apify_client():
+    """Builds an ApifyClient using the user's saved key (My Profile → Scraper Settings),
+    falling back to the app's default APIFY_API_TOKEN from .env."""
+    try:
+        user_key = get_user_settings(USER_EMAIL).get("apify_api_key", "")
+    except Exception:
+        user_key = ""
+    return ApifyClient(user_key.strip() if user_key else APIFY_API_TOKEN)
 
 
 @st.cache_data(show_spinner=False)
@@ -21,8 +32,9 @@ def fetch_linkedin_jobs(search_query, location="india", rows=60):
         "proxy": {"useApifyProxy": True, "apifyProxyGroups": ["RESIDENTIAL"]},
     }
     try:
-        run = apify_client.actor("BHzefUZlZRKWxkTck").call(run_input=run_input)
-        jobs = list(apify_client.dataset(run["defaultDatasetId"]).iterate_items())
+        client = _get_apify_client()
+        run = client.actor("BHzefUZlZRKWxkTck").call(run_input=run_input)
+        jobs = list(client.dataset(run["defaultDatasetId"]).iterate_items())
         save_jobs_to_db("linkedin", search_query, jobs)
         return jobs
     except ApifyApiError as e:
@@ -37,8 +49,9 @@ def fetch_linkedin_jobs(search_query, location="india", rows=60):
 def fetch_naukri_jobs(search_query, rows=60, deep_scan=False):
     run_input = {"keyword": search_query, "maxJobs": rows}
     try:
-        run = apify_client.actor("muhammetakkurtt/naukri-job-scraper").call(run_input=run_input)
-        jobs = list(apify_client.dataset(run["defaultDatasetId"]).iterate_items())
+        client = _get_apify_client()
+        run = client.actor("muhammetakkurtt/naukri-job-scraper").call(run_input=run_input)
+        jobs = list(client.dataset(run["defaultDatasetId"]).iterate_items())
         save_jobs_to_db("naukri", search_query, jobs)
 
         if deep_scan and jobs:
@@ -79,8 +92,9 @@ def fetch_full_details_batched(urls):
         "maxConcurrency": 5,
     }
     try:
-        run = apify_client.actor("apify/playwright-scraper").call(run_input=run_input)
-        return list(apify_client.dataset(run["defaultDatasetId"]).iterate_items())
+        client = _get_apify_client()
+        run = client.actor("apify/playwright-scraper").call(run_input=run_input)
+        return list(client.dataset(run["defaultDatasetId"]).iterate_items())
     except ApifyApiError as e:
         _show_apify_error("Playwright scraper", str(e))
         return []
@@ -101,8 +115,9 @@ def fetch_indeed_jobs(search_query, location="India", country="IN", rows=50):
         "saveOnlyUniqueItems": True,
     }
     try:
-        run = apify_client.actor("hMvNSpz3JnHgl5jkh").call(run_input=run_input)
-        jobs = list(apify_client.dataset(run["defaultDatasetId"]).iterate_items())
+        client = _get_apify_client()
+        run = client.actor("hMvNSpz3JnHgl5jkh").call(run_input=run_input)
+        jobs = list(client.dataset(run["defaultDatasetId"]).iterate_items())
         save_jobs_to_db("indeed", search_query, jobs)
         return jobs
     except ApifyApiError as e:
@@ -127,10 +142,11 @@ def fetch_linkedin_posts(max_results=30):
     """Fetch LinkedIn hiring posts across 4 hashtag searches, save to Supabase."""
     all_posts = []
     try:
+        client = _get_apify_client()
         # Start all 4 runs concurrently
         runs = []
         for url in LINKEDIN_POST_SEARCHES:
-            run = apify_client.actor("Wpp1BZ6yGWjySadk3").start(
+            run = client.actor("Wpp1BZ6yGWjySadk3").start(
                 run_input={"urls": [url], "maxResults": max_results}
             )
             runs.append(run)
@@ -138,8 +154,8 @@ def fetch_linkedin_posts(max_results=30):
         # Wait for each and collect items
         for run in runs:
             try:
-                apify_client.run(run["id"]).wait_for_finish()
-                items = list(apify_client.dataset(run["defaultDatasetId"]).iterate_items())
+                client.run(run["id"]).wait_for_finish()
+                items = list(client.dataset(run["defaultDatasetId"]).iterate_items())
                 all_posts.extend(items)
             except Exception as e:
                 st.warning(f"A post scrape run failed: {e}")
@@ -157,10 +173,11 @@ def fetch_linkedin_posts(max_results=30):
 def fetch_poster_email(profile_url: str) -> str:
     """Return email for a LinkedIn profile URL, or empty string on failure."""
     try:
-        run = apify_client.actor("anchor/linkedin-to-email").call(
+        client = _get_apify_client()
+        run = client.actor("anchor/linkedin-to-email").call(
             run_input={"startUrls": [{"url": profile_url}]}
         )
-        items = list(apify_client.dataset(run["defaultDatasetId"]).iterate_items())
+        items = list(client.dataset(run["defaultDatasetId"]).iterate_items())
         return (items[0].get("email") or "") if items else ""
     except Exception as e:
         print(f"fetch_poster_email error: {e}")

@@ -182,6 +182,15 @@ if "scraper_settings" not in st.session_state:
 
 settings = st.session_state["scraper_settings"]
 
+apify_api_key = st.text_input(
+    "🔑 Apify API Key",
+    value=settings.get("apify_api_key", ""),
+    type="password",
+    placeholder="apify_api_xxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    help="Used to fetch jobs from LinkedIn, Naukri, and Indeed via Apify. Leave blank to use the app's default key.",
+    key="input_apify_key",
+)
+
 linkedin_rows = st.slider(
     "LinkedIn — jobs per search title (× 3 titles)",
     min_value=20, max_value=300,
@@ -211,11 +220,13 @@ st.caption(
 )
 
 if st.button("💾 Save Settings", type="primary"):
-    if save_user_settings(USER_EMAIL, linkedin_rows, naukri_rows, indeed_rows):
+    if save_user_settings(USER_EMAIL, linkedin_rows, naukri_rows, indeed_rows,
+                          apify_api_key=apify_api_key.strip()):
         st.session_state["scraper_settings"] = {
             "linkedin_rows": linkedin_rows,
             "naukri_rows":   naukri_rows,
             "indeed_rows":   indeed_rows,
+            "apify_api_key": apify_api_key.strip(),
         }
         st.success("Settings saved!")
     else:
