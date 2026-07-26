@@ -1,0 +1,207 @@
+Role: Sr Technical Product Manager
+
+Location: Bangalore, India
+
+Full/ Part-time: Full time
+
+Build a career with confidence
+
+Carrier Global Corporation, global leader in intelligent climate and energy solutions is committed to creating solutions that matter for people and our planet for generations to come. From the beginning, we've led in inventing new technologies and entirely new industries. Today, we continue to lead because we have a world-class, diverse workforce that puts the customer at the center of everything we do.
+
+About The Role
+
+Internal Delivery Role Title for Sr Technical Product Manager in our Org is Sr Tech Lead; Sr Tech Lead is same as Sr Technical Project Manager or Sr Solution Architect in many other organizations.
+
+The Senior Technical product manager– Analytics (Program / Portfolio) is accountable for technical strategy, delivery governance, and people leadership across multiple analytics pods or products within the Analytics CoE.
+
+This role ensures that analytics solutions delivered across the portfolio are:
+
+
+ * Technically consistent and scalable
+ * Aligned to enterprise architecture and standards
+ * Delivered predictably with high quality
+ * Built and sustained by high‑performing teams
+   
+   
+
+The role acts as the senior technical authority for analytics delivery, partnering with Product Managers, Business Analysts, Architects, and Platform teams, while managing and developing Tech Leads and senior engineers.
+
+Role Responsibilities
+
+Portfolio‑Level Technical Strategy & Architecture
+
+
+ * Own and evolve the technical strategy for analytics across multiple pods/products
+ * Define and govern enterprise‑level analytics architecture, including:
+    * Data ingestion and integration patterns
+    * Data modeling and semantic layer standards
+    * Reporting and analytics consumption patterns
+
+ * Drive standardization, reuse, and simplification to reduce technical debt
+ * Review and approve technical designs for major initiatives and cross‑pod solutions
+   
+
+Program / Portfolio Delivery Governance
+
+
+ * Provide technical oversight across multiple analytics pods
+ * Ensure consistent application of:
+    * Design standards
+    * Coding and modelling best practices
+    * Data quality and validation frameworks
+
+ * Own technical risk management at portfolio level (dependencies, scalability, performance)
+ * Act as final technical escalation point for complex delivery issues
+   
+
+Partnership with Product, BA & Architecture Leadership
+
+
+ * Partner with Product Managers to align portfolio roadmaps with technical feasibility
+ * Work with Senior BAs to ensure KPI frameworks and metric logic are technically sound and scalable
+ * Collaborate with Solution / Enterprise Architects to ensure alignment with:
+    * Platform strategy
+    * Security, compliance, and governance standards
+
+ * Influence prioritization decisions by articulating technical trade‑offs and impacts
+   
+
+Hands‑On Technical Leadership (Selective, High‑Impact)
+
+
+ * Step in hands‑on for:
+    * Complex architecture decisions
+    * Large migrations / rationalization efforts
+    * Cross‑domain analytics solutions
+
+ * Guide teams on:
+    * SAP BW / HANA / S/4 data models
+    * Data warehousing, Lakehouse, DataLake, ETL / ELT patterns
+    * Cloud analytics platforms (AWS, Snowflake, etc.)
+
+ * Ensure analytics platforms are future‑ready, not just fit for current use cases
+   
+
+Analytics Technical Solution Ownership
+
+
+ * Own the end‑to‑end technical design of analytics solutions within assigned pods or products
+ * Define future‑state analytics architecture, including data flows, integration patterns, and semantic layers
+ * Review and approve data models, pipelines, and reporting architectures
+ * Ensure solutions are scalable, performant, reusable, and maintainable
+   
+   
+
+Team Leadership & Mentorship
+
+Leadership of Tech Leads & Senior Engineers
+
+
+ * Line‑manage and mentor Tech Leads and senior analytics engineers
+ * Set clear expectations for:
+    * Technical ownership
+    * Delivery accountability
+    * Quality standards
+
+ * Coach Tech Leads on:
+    * Decision‑making
+    * Stakeholder communication
+    * Balancing speed vs sustainability
+      
+
+Talent Development & Capability Building
+
+
+ * Build a strong analytics engineering leadership bench
+ * Define and drive skill development paths for:
+    * Data engineering
+    * BI & semantic modeling
+    * Cloud and platform capabilities
+
+ * Identify skill gaps and partner with CoE leadership on:
+    * Hiring strategy
+    * Upskilling plans
+    * Vendor augmentation where required
+      
+
+Culture, Ways of Working & Engineering Excellence
+
+
+ * Champion product‑based delivery and engineering discipline
+ * Promote strong collaboration across Product, BA, Engineering, and Platform teams
+ * Embed a culture of:
+    * Ownership
+    * Reuse over reinvention
+    * Data quality and reliability
+
+ * Act as a role model for technical and people leadership
+   
+
+Minimum Requirements
+
+Functional & Domain Experience
+
+
+ * 14–16+ years in analytics, data engineering, or BI
+ * Proven experience leading large‑scale analytics programs or portfolios
+ * Strong domain exposure in Supply Chain, Manufacturing, Retail, Sales, Finance, or Operations
+ * Experience delivering enterprise‑scale analytics solutions
+   
+   
+
+Technical Skills
+
+
+ * Strong hands‑on experience with: ETL / ELT Cloud platforms (AWS, Snowflake , Open source), Databricks, Open Source, SAP Analytics (BW, HANA, S/4) Data Warehousing and
+ * Strong grasp of:
+    * Data modeling and semantic layers
+    * Analytics performance and scalability
+    * Integration patterns across heterogeneous source systems
+
+ * Experience with BI platforms (Power BI, Looker, Tableau, Qlik, etc.)
+ * Support complex data analysis, troubleshooting, and solution rationalization
+ * Guide teams in modern analytics and data engineering practices
+   
+
+Soft Skills
+
+
+ * Proven people management experience with senior technical staff
+ * Strong influencing skills across business and technology leadership
+ * Ability to communicate complex technical concepts in business terms
+ * High ownership mindset with enterprise‑level thinking
+ * Comfortable operating in ambiguity and driving clarity at scale
+ * Excellent communication and stakeholder management skills
+ * Ability to influence without authority
+ * Strong coaching, mentoring, and feedback skills
+ * Ability to influence and motivate teams without micromanagement
+ * Strong communication and conflict‑resolution skills
+   
+   
+
+Benefits
+
+We are committed to offering competitive benefits programs for all of our employees, and enhancing our programs when necessary.
+
+
+ * Enjoy your best years with our retirement savings plan
+ * Have peace of mind and body with our health insurance
+ * Make yourself a priority with flexible schedules, parental leave and our holiday purchase scheme
+ * Drive forward your career through professional development opportunities
+ * Achieve your personal goals with our Employee Assistance Programme.
+   
+   
+
+Our commitment to you
+
+Our greatest assets are the expertise, creativity and passion of our employees. We strive to provide a great place to work that attracts, develops and retains the best talent, promotes employee engagement, fosters teamwork and ultimately drives innovation for the benefit of our customers. We strive to create an environment where you feel that you belong, with diversity and inclusion as the engine to growth and innovation. We develop and deploy best-in-class programs and practices, providing enriching career opportunities, listening to employee feedback and always challenging ourselves to do better. This is The Carrier Way.
+
+Join us and make a difference.
+
+Apply Now!
+
+Carrier is An Equal Opportunity/Affirmative Action Employer. All qualified applicants will receive consideration for employment without regard to race, color, religion, sex, sexual orientation, gender identity, national origin, disability or veteran status, age or any other federally protected class.
+
+Job Applicant's Privacy Notice
+
+Click on this link to read the Job Applicant's Privacy Notice

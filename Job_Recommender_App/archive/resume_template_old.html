@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Resume – Ashu Mishra</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet"/>
+<style>
+
+/* ─── PAGE SETUP ─────────────────────────────────────────── */
+@page {
+  size: A4;
+  margin: 16mm 18mm 16mm 18mm;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --navy:   #1F3864;
+  --teal:   #17A589;
+  --orange: #E67E22;
+  --dark:   #1a1a2e;
+  --body:   #3a3a4a;
+  --muted:  #7a7a8a;
+  --rule:   #dde3ec;
+  --bg:     #ffffff;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 9.5pt;
+  line-height: 1.5;
+  color: var(--body);
+  background: var(--bg);
+}
+
+/* ─── HEADER ─────────────────────────────────────────────── */
+.header {
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+  border-bottom: 3px solid var(--navy);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.header-left {}
+
+.name {
+  font-family: 'DM Serif Display', serif;
+  font-size: 28pt;
+  color: var(--navy);
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+
+.tagline {
+  font-size: 9.5pt;
+  font-weight: 600;
+  color: var(--teal);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.contact {
+  text-align: right;
+  font-size: 8.2pt;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.contact a {
+  color: var(--teal);
+  text-decoration: none;
+}
+
+/* ─── SECTION HEADERS ────────────────────────────────────── */
+.section {
+  margin-bottom: 12px;
+}
+
+.section-title {
+  font-size: 8pt;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--navy);
+  padding-bottom: 3px;
+  margin-bottom: 7px;
+  border-bottom: 1.5px solid var(--teal);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.section-title::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: var(--orange);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ─── SUMMARY ────────────────────────────────────────────── */
+.summary p {
+  font-size: 9pt;
+  color: var(--body);
+  line-height: 1.6;
+}
+
+/* ─── COMPETENCIES ───────────────────────────────────────── */
+.competencies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.tag {
+  background: #edf2f9;
+  color: var(--navy);
+  font-size: 7.8pt;
+  font-weight: 600;
+  padding: 2.5px 8px;
+  border-radius: 3px;
+  border-left: 2.5px solid var(--teal);
+}
+
+/* ─── EXPERIENCE ─────────────────────────────────────────── */
+.job {
+  margin-bottom: 11px;
+  page-break-inside: avoid;
+}
+
+.job-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 1px;
+}
+
+.job-title {
+  font-size: 10pt;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.job-dates {
+  font-size: 7.8pt;
+  color: var(--muted);
+  font-style: italic;
+  white-space: nowrap;
+}
+
+.job-company {
+  font-size: 8.5pt;
+  font-weight: 600;
+  color: var(--teal);
+  margin-bottom: 4px;
+}
+
+.job-context {
+  font-size: 8.2pt;
+  color: var(--muted);
+  font-style: italic;
+  margin-bottom: 4px;
+}
+
+ul.bullets {
+  list-style: none;
+  padding: 0;
+}
+
+ul.bullets li {
+  font-size: 8.8pt;
+  color: var(--body);
+  line-height: 1.55;
+  padding-left: 12px;
+  position: relative;
+  margin-bottom: 3px;
+}
+
+ul.bullets li::before {
+  content: '▸';
+  position: absolute;
+  left: 0;
+  color: var(--orange);
+  font-size: 7pt;
+  top: 1.5px;
+}
+
+ul.bullets li .bold {
+  font-weight: 700;
+  color: var(--navy);
+}
+
+/* ─── TECH LINE ──────────────────────────────────────────── */
+.tech-line {
+  margin-top: 5px;
+  font-size: 7.8pt;
+  color: var(--muted);
+}
+
+.tech-line span {
+  font-weight: 700;
+  color: var(--navy);
+}
+
+/* ─── ACHIEVEMENTS ───────────────────────────────────────── */
+.achievements-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px 16px;
+}
+
+.achievement-item {
+  font-size: 8.5pt;
+  color: var(--body);
+  padding-left: 12px;
+  position: relative;
+  line-height: 1.5;
+}
+
+.achievement-item::before {
+  content: '◆';
+  position: absolute;
+  left: 0;
+  color: var(--teal);
+  font-size: 6pt;
+  top: 2px;
+}
+
+.achievement-item .label {
+  font-weight: 700;
+  color: var(--navy);
+}
+
+/* ─── EDUCATION ──────────────────────────────────────────── */
+.edu-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 3px;
+}
+
+.edu-degree {
+  font-size: 9pt;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.edu-meta {
+  font-size: 8pt;
+  color: var(--muted);
+}
+
+.edu-school {
+  font-size: 8.2pt;
+  color: var(--teal);
+  font-weight: 600;
+}
+
+</style>
+</head>
+<body>
+
+<!-- ═══════════ HEADER ═══════════ -->
+<div class="header">
+  <div class="header-left">
+    <div class="name">Ashu Mishra</div>
+    <div class="tagline">Senior Product Manager — B2B SaaS · AI/ML · Supply Chain &amp; IoT</div>
+  </div>
+  <div class="contact">
+    +91 88826 44660<br/>
+    ashumishra1@outlook.com<br/>
+    <a href="https://linkedin.com/in/ashumish">linkedin.com/in/ashumish</a>
+  </div>
+</div>
+
+<!-- ═══════════ SUMMARY ═══════════ -->
+<div class="section summary">
+  <div class="section-title">Professional Summary</div>
+  <p>
+    Strategic Senior Product Manager with 7+ years driving B2B SaaS product delivery across AI/ML, fintech, and supply chain domains. Proven ability to manage technical cross-functional teams, define system architecture, and lead end-to-end product development from requirements gathering through deployment. Hands-on experience with supply chain &amp; logistics solutions at ElasticRun, AI/NLP data pipelines at Zigram, and payment orchestration at Medikabazaar. Strong track record of translating complex client requirements into scalable, production-grade product solutions in Agile environments.
+  </p>
+</div>
+
+<!-- ═══════════ COMPETENCIES ═══════════ -->
+<div class="section">
+  <div class="section-title">Core Competencies</div>
+  <div class="competencies">
+    <span class="tag">B2B SaaS Product Management</span>
+    <span class="tag">System Architecture &amp; Design</span>
+    <span class="tag">Agile / Scrum Leadership</span>
+    <span class="tag">AI/ML Product Delivery</span>
+    <span class="tag">Supply Chain &amp; Logistics Solutions</span>
+    <span class="tag">Technical Team Management</span>
+    <span class="tag">Client Requirements &amp; Solutioning</span>
+    <span class="tag">Product Roadmap &amp; GTM Strategy</span>
+    <span class="tag">IoT / GPS / RFID (Familiar)</span>
+    <span class="tag">Vector Databases &amp; NLP</span>
+    <span class="tag">API Integration &amp; Payment Systems</span>
+    <span class="tag">SQL · Python · Jira · Figma · Tableau</span>
+    <span class="tag">OKRs / KPIs &amp; Data-Driven Decisions</span>
+    <span class="tag">Cross-functional Stakeholder Management</span>
+  </div>
+</div>
+
+<!-- ═══════════ EXPERIENCE ═══════════ -->
+<div class="section">
+  <div class="section-title">Professional Experience</div>
+
+  <!-- ZIGRAM -->
+  <div class="job">
+    <div class="job-header">
+      <div class="job-title">Technical Product Manager</div>
+      <div class="job-dates">June 2025 – Present</div>
+    </div>
+    <div class="job-company">Zigram</div>
+    <div class="job-context">AI-Driven B2B SaaS · NLP · Agentic AI · Vector Database Solutions</div>
+    <ul class="bullets">
+      <li>Architected and deployed large-scale B2B data processing pipelines for Zigram's core SaaS product; designed optimized schemas for vector and non-relational databases supporting real-time AI applications — directly contributing to <span class="bold">solutioning and system architecture decisions.</span></li>
+      <li>Built and managed production-grade NLP systems processing <span class="bold">20,000+ news articles daily</span> using Named Entity Recognition (NER); led technical teams to deliver adversarial press intelligence databases with <span class="bold">10ms–30sec vector search</span> query response times.</li>
+      <li>Pioneered AI-powered data infrastructure for PEP compliance databases, engineering schemas to handle <span class="bold">15+ million records</span> while implementing Agentic AI systems for automated web scraping, data extraction, and intelligent structuring.</li>
+      <li>Gathered and translated complex client compliance requirements into actionable product specs; managed documentation, prioritized backlogs, and ensured timely delivery through Agile sprint cycles.</li>
+    </ul>
+    <div class="tech-line"><span>Key Technologies:</span> Vector Databases · NLP/NER · Agentic AI · ML Pipelines · Real-time Data Processing · Python</div>
+  </div>
+
+  <!-- MEDIKABAZAAR -->
+  <div class="job">
+    <div class="job-header">
+      <div class="job-title">Senior Product Manager</div>
+      <div class="job-dates">Jan 2024 – June 2025</div>
+    </div>
+    <div class="job-company">Medikabazaar, Gurgaon</div>
+    <ul class="bullets">
+      <li><span class="bold">Fintech Innovation:</span> Established B2B fintech vertical with API integrations to 100+ banks and 5 major payment gateways across Dubai and India; implemented open router orchestration achieving <span class="bold">99.5% success rate</span> on 300–400 Cr monthly invoices.</li>
+      <li><span class="bold">Payment Orchestration:</span> Built intelligent routing system handling <span class="bold">1,000+ daily orders</span> using advanced data analytics to optimise payment decisions across multi-geography operations.</li>
+      <li><span class="bold">Procurement Platform:</span> Architected end-to-end B2B procurement platform with Java-based validation algorithms using Agile methodology; unlocked <span class="bold">USD 130M working capital</span> through intelligent inventory orchestration.</li>
+      <li><span class="bold">Sales Application:</span> Led ML-powered sales enrolment system managing <span class="bold">350 Cr monthly orders</span>; reduced processing time significantly through automated data mapping and semantic search.</li>
+      <li><span class="bold">Ecommerce Catalogue:</span> Engineered catalogue management platform for <span class="bold">1.1M SKUs</span> with semantic search capabilities, driving measurable PDP-to-cart conversion lift across markets.</li>
+    </ul>
+  </div>
+
+  <!-- ELASTICRUN SPM -->
+  <div class="job">
+    <div class="job-header">
+      <div class="job-title">Senior Product Manager</div>
+      <div class="job-dates">Apr 2022 – Dec 2023</div>
+    </div>
+    <div class="job-company">ElasticRun, Pune</div>
+    <ul class="bullets">
+      <li><span class="bold">Supply Chain Solutions:</span> Spearheaded reverse supply chain optimisation through process simplification and technology solutions, unlocking <span class="bold">40 Cr working capital</span> and increasing business liquidity.</li>
+      <li><span class="bold">P&amp;L Management:</span> Designed foundational P&amp;L Ecosystem leading 3 Business Analysts to establish KPIs and drive profitability across <span class="bold">20+ warehouses</span>; awarded <span class="bold">Team of the Year.</span></li>
+      <li><span class="bold">Sales Enhancement:</span> Implemented SMART Recommender, SMART Basket, and Medal Framework gamification; increased margin from <span class="bold">4.5% to 7.5%</span> and items per invoice from <span class="bold">7 to 12.</span></li>
+      <li><span class="bold">Logistics Optimisation:</span> Streamlined logistics processes through customer interviews and data analysis, achieving <span class="bold">2 Cr monthly cost savings.</span></li>
+      <li><span class="bold">Automation:</span> Deployed automated item population system in Sales App achieving <span class="bold">90% manpower reduction</span> while enhancing UX and operational efficiency.</li>
+    </ul>
+  </div>
+
+  <!-- ELASTICRUN PM -->
+  <div class="job">
+    <div class="job-header">
+      <div class="job-title">Product Manager</div>
+      <div class="job-dates">Mar 2020 – Apr 2022</div>
+    </div>
+    <div class="job-company">ElasticRun, Pune</div>
+    <ul class="bullets">
+      <li>Built comprehensive data-driven dashboards for cost analysis, establishing guidelines for <span class="bold">200 Cr/month revenue management</span> across business units.</li>
+      <li>Developed KPI monitoring application tracking daily response rates and system performance, improving operational visibility and enabling data-driven decisions.</li>
+      <li>Coordinated procurement-operations collaboration, resulting in <span class="bold">20 Cr advance payment release;</span> partnered with Sales and leadership to achieve monthly <span class="bold">5% EBITDA increase.</span></li>
+    </ul>
+  </div>
+
+  <!-- EON ELECTRIC -->
+  <div class="job">
+    <div class="job-header">
+      <div class="job-title">Procurement Engineer</div>
+      <div class="job-dates">Feb 2015 – May 2017</div>
+    </div>
+    <div class="job-company">Eon Electric Limited, Delhi</div>
+    <ul class="bullets">
+      <li>Managed procurement operations for electronic components in lighting fixtures and voltage chargers; facilitated cross-departmental collaboration across Sales, R&amp;D, Quality Assurance, and Finance.</li>
+    </ul>
+  </div>
+
+</div>
+
+<!-- ═══════════ KEY ACHIEVEMENTS ═══════════ -->
+<div class="section">
+  <div class="section-title">Key Achievements</div>
+  <div class="achievements-grid">
+    <div class="achievement-item"><span class="label">Revenue &amp; Payments:</span> Managed 300–400 Cr monthly invoices with 99.5% success rate across India &amp; Dubai B2B operations.</div>
+    <div class="achievement-item"><span class="label">Working Capital:</span> Unlocked USD 130M + 40 Cr through intelligent procurement and supply chain automation.</div>
+    <div class="achievement-item"><span class="label">AI Scale:</span> Built NLP pipelines processing 20,000+ articles/day with sub-30s vector search on 15M+ records.</div>
+    <div class="achievement-item"><span class="label">Cost Optimisation:</span> Achieved 2 Cr monthly logistics savings and 90% manpower reduction through product-led automation.</div>
+  </div>
+</div>
+
+<!-- ═══════════ EDUCATION ═══════════ -->
+<div class="section">
+  <div class="section-title">Education</div>
+  <div class="edu-row">
+    <div>
+      <span class="edu-degree">PGDM (Marketing)</span>
+      <span class="edu-school"> — IMT, Ghaziabad</span>
+    </div>
+    <div class="edu-meta">2020</div>
+  </div>
+  <div class="edu-row">
+    <div>
+      <span class="edu-degree">B.Tech (Mechatronics)</span>
+      <span class="edu-school"> — UPES, Dehradun</span>
+    </div>
+    <div class="edu-meta">2015</div>
+  </div>
+</div>
+
+</body>
+</html>

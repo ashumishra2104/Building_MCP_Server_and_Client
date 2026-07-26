@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>UI Options — Job Card Wireframes</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 30px; color: #1a1a1a; }
+
+  h1 { font-size: 20px; color: #1B3A6B; margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: #666; margin-bottom: 36px; }
+
+  .options-row { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+
+  .option-block { flex: 1; min-width: 300px; max-width: 380px; }
+  .option-label {
+    font-size: 13px; font-weight: 700; color: #fff;
+    background: #1B3A6B; padding: 7px 14px;
+    border-radius: 8px 8px 0 0; letter-spacing: 0.5px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .option-label .tag {
+    background: #C8861A; font-size: 10px; padding: 2px 7px;
+    border-radius: 10px; letter-spacing: 0;
+  }
+  .option-desc {
+    font-size: 11.5px; color: #444; background: #e8edf5;
+    padding: 8px 14px; border-left: 3px solid #1B3A6B;
+    margin-bottom: 14px;
+    line-height: 1.5;
+  }
+
+  /* ── CARD WIREFRAME BASE ── */
+  .card {
+    background: #fff;
+    border: 1.5px solid #d0d7de;
+    border-left: 5px solid #0077b5;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+
+  .card-top { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; }
+  .avatar {
+    width: 38px; height: 38px; background: #e8edf5;
+    border-radius: 8px; display: flex; align-items: center;
+    justify-content: center; font-weight: 700; color: #555;
+    font-size: 16px; flex-shrink: 0;
+  }
+  .card-meta { flex: 1; }
+  .job-title { font-size: 15px; font-weight: 700; color: #1a1a1a; }
+  .company { font-size: 12px; color: #555; margin-top: 2px; }
+  .badges { display: flex; gap: 6px; margin-top: 6px; }
+  .badge {
+    font-size: 10px; font-weight: 600; padding: 2px 8px;
+    border-radius: 12px;
+  }
+  .badge-easy { background: #e8f0fe; color: #1967d2; }
+  .badge-salary { background: #e6ffec; color: #055d20; }
+
+  .meta-row { display: flex; gap: 14px; font-size: 11.5px; color: #666; margin-bottom: 8px; }
+  .desc-preview { font-size: 11.5px; color: #444; line-height: 1.5;
+    overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+  .card-footer { display: flex; justify-content: space-between; align-items: center;
+    margin-top: 12px; padding-top: 10px; border-top: 1px solid #f0f0f0; }
+  .view-link { color: #0077b5; font-size: 12px; font-weight: 600; text-decoration: none; }
+  .apply-btn {
+    background: #0077b5; color: #fff; font-size: 12px;
+    font-weight: 600; padding: 6px 14px; border-radius: 7px;
+    border: none; cursor: pointer;
+  }
+
+  /* ── OPTION A elements ── */
+  .applied-bar {
+    background: #dc2626; color: #fff; font-size: 13px; font-weight: 700;
+    padding: 10px; border-radius: 8px; text-align: center; margin-bottom: 8px;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .applied-bar.unapplied { background: #f0f4fb; color: #555; border: 1.5px solid #d0d7de; font-weight: 600; }
+
+  .expander {
+    border: 1.5px solid #d0d7de; border-radius: 8px;
+    padding: 10px 14px; margin-bottom: 6px; font-size: 12px;
+    color: #333; display: flex; align-items: center; gap: 8px;
+    cursor: pointer; background: #fff;
+  }
+  .expander .arrow { color: #888; font-size: 10px; }
+
+  /* ── OPTION B elements ── */
+  .applied-chip {
+    font-size: 10px; font-weight: 700; padding: 3px 9px;
+    border-radius: 12px; display: inline-flex; align-items: center; gap: 4px;
+  }
+  .chip-applied { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+  .chip-unapplied { background: #f0f4fb; color: #555; border: 1px solid #d0d7de; }
+
+  .actions-expander {
+    border: 1.5px solid #d0d7de; border-radius: 8px;
+    overflow: hidden; margin-bottom: 6px;
+  }
+  .actions-header {
+    padding: 10px 14px; font-size: 12px; font-weight: 600;
+    color: #1B3A6B; background: #f6f8fc;
+    display: flex; align-items: center; gap: 8px; cursor: pointer;
+    border-bottom: 1.5px solid #d0d7de;
+  }
+  .tabs-row {
+    display: flex; border-bottom: 1.5px solid #e0e0e0; background: #fff;
+  }
+  .tab {
+    flex: 1; text-align: center; padding: 8px 4px; font-size: 11px;
+    font-weight: 600; color: #666; cursor: pointer; border-bottom: 2px solid transparent;
+  }
+  .tab.active { color: #1B3A6B; border-bottom-color: #1B3A6B; }
+  .tab-content {
+    padding: 12px 14px; font-size: 11.5px; color: #555;
+    background: #fff; line-height: 1.6;
+  }
+  .tab-content .gen-btn {
+    background: #1B3A6B; color: #fff; border: none;
+    padding: 6px 14px; border-radius: 6px; font-size: 11px;
+    font-weight: 600; cursor: pointer; margin-top: 6px;
+  }
+
+  /* ── OPTION C elements ── */
+  .action-row {
+    display: flex; gap: 6px; margin-bottom: 8px; align-items: center;
+  }
+  .action-btn {
+    flex: 1; border: 1.5px solid #d0d7de; border-radius: 8px;
+    padding: 7px 6px; font-size: 11px; font-weight: 600;
+    color: #333; background: #fff; cursor: pointer; text-align: center;
+  }
+  .action-btn.applied-mini {
+    background: #dcfce7; color: #166534;
+    border-color: #86efac; flex: 0 0 auto; padding: 7px 10px;
+  }
+  .action-btn.active-section {
+    background: #e8f0fe; color: #1B3A6B; border-color: #93c5fd;
+  }
+  .open-section {
+    border: 1.5px solid #93c5fd; border-radius: 8px;
+    padding: 12px 14px; font-size: 11.5px; color: #444;
+    background: #f8faff; margin-bottom: 6px; line-height: 1.6;
+  }
+  .open-section .section-title {
+    font-size: 11px; font-weight: 700; color: #1B3A6B;
+    text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px;
+  }
+
+  /* ── PROS/CONS ── */
+  .pros-cons { margin-top: 10px; display: flex; gap: 10px; }
+  .pros, .cons {
+    flex: 1; border-radius: 8px; padding: 10px 12px; font-size: 11px; line-height: 1.6;
+  }
+  .pros { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+  .cons { background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; }
+  .pros strong, .cons strong { display: block; font-size: 11px; margin-bottom: 4px; }
+
+  .rec-banner {
+    background: #fdfaf5; border: 1.5px solid #C8861A;
+    border-radius: 8px; padding: 10px 14px; margin-top: 10px;
+    font-size: 11.5px; color: #7c4f00; line-height: 1.5;
+  }
+  .rec-banner strong { color: #C8861A; }
+
+  /* current state */
+  .current-block { max-width: 360px; }
+  .current-label {
+    font-size: 13px; font-weight: 700; color: #fff;
+    background: #555; padding: 7px 14px; border-radius: 8px 8px 0 0;
+  }
+  .current-desc { font-size: 11.5px; color: #444; background: #e8e8e8;
+    padding: 8px 14px; border-left: 3px solid #555; margin-bottom: 14px; }
+
+  h2 { font-size: 15px; color: #1B3A6B; margin: 36px 0 16px; border-bottom: 2px solid #e0e7f0; padding-bottom: 6px; }
+</style>
+</head>
+<body>
+
+<h1>Job Card — UI Declutter Options</h1>
+<p class="subtitle">3 options to reduce visual noise without losing any functionality. Current state shown first.</p>
+
+<!-- CURRENT STATE -->
+<h2>📍 Current State (5 elements per card)</h2>
+<div class="current-block">
+  <div class="current-label">Current</div>
+  <div class="current-desc">Card + applied bar (full width) + 3 separate expanders = crowded</div>
+  <div class="card">
+    <div class="card-top">
+      <div class="avatar">P</div>
+      <div class="card-meta">
+        <div class="job-title">Senior Product Manager</div>
+        <div class="company">Pine Labs</div>
+        <div class="badges">
+          <span class="badge badge-easy">● Easy Apply</span>
+          <span class="badge badge-salary">Not Disclosed</span>
+        </div>
+      </div>
+    </div>
+    <div class="meta-row"><span>📍 Bengaluru, India</span><span>🕒 Recently</span></div>
+    <div class="desc-preview">Why this exists — What if the app that handles your home's money actually understood how homes work?…</div>
+    <div class="card-footer">
+      <a class="view-link">🔗 View Job</a>
+      <button class="apply-btn">Apply Now</button>
+    </div>
+  </div>
+  <div class="applied-bar">✅ Applied</div>
+  <div class="expander"><span class="arrow">›</span> Tailor Resume for this Job</div>
+  <div class="expander"><span class="arrow">›</span> ✍️ Generate Cover Letter</div>
+  <div class="expander"><span class="arrow">›</span> Read More Details</div>
+</div>
+
+<!-- OPTIONS -->
+<h2>💡 Options</h2>
+<div class="options-row">
+
+  <!-- OPTION A -->
+  <div class="option-block">
+    <div class="option-label">Option A — Single Actions Expander</div>
+    <div class="option-desc">Applied toggle stays full-width. All 3 expanders collapse into one ⚡ Actions expander with tabs inside.</div>
+    <div class="card">
+      <div class="card-top">
+        <div class="avatar">P</div>
+        <div class="card-meta">
+          <div class="job-title">Senior Product Manager</div>
+          <div class="company">Pine Labs</div>
+          <div class="badges">
+            <span class="badge badge-easy">● Easy Apply</span>
+            <span class="badge badge-salary">Not Disclosed</span>
+          </div>
+        </div>
+      </div>
+      <div class="meta-row"><span>📍 Bengaluru, India</span><span>🕒 Recently</span></div>
+      <div class="desc-preview">Why this exists — What if the app that handles your home's money actually understood how homes work?…</div>
+      <div class="card-footer">
+        <a class="view-link">🔗 View Job</a>
+        <button class="apply-btn">Apply Now</button>
+      </div>
+    </div>
+    <!-- Applied toggle stays -->
+    <div class="applied-bar">✅ Applied</div>
+    <!-- Single merged expander -->
+    <div class="actions-expander">
+      <div class="actions-header">⚡ Actions</div>
+      <div class="tabs-row">
+        <div class="tab active">📄 Tailor Resume</div>
+        <div class="tab">✍️ Cover Letter</div>
+        <div class="tab">📖 Full JD</div>
+      </div>
+      <div class="tab-content">
+        Click <strong>✨ Create Customised Resume</strong> to tailor your resume to this role using AI.
+        <br><button class="gen-btn">✨ Create Resume</button>
+      </div>
+    </div>
+    <div class="pros-cons">
+      <div class="pros"><strong>✅ Pros</strong>Simple — 2 items only.<br>All actions in one place.</div>
+      <div class="cons"><strong>⚠️ Cons</strong>Applied bar still takes full width.<br>One extra tab click.</div>
+    </div>
+  </div>
+
+  <!-- OPTION B -->
+  <div class="option-block">
+    <div class="option-label">Option B — Badge + Single Tabbed Expander <span class="tag">Recommended</span></div>
+    <div class="option-desc">Applied moves inside the card as a small chip (top-right). One ⚡ Actions expander with 3 tabs. Only 1 item below the card.</div>
+    <div class="card">
+      <div class="card-top">
+        <div class="avatar">P</div>
+        <div class="card-meta">
+          <div class="job-title">Senior Product Manager</div>
+          <div class="company">Pine Labs</div>
+          <div class="badges">
+            <span class="badge badge-easy">● Easy Apply</span>
+            <span class="badge badge-salary">Not Disclosed</span>
+          </div>
+        </div>
+        <!-- Applied chip in top-right of card -->
+        <div>
+          <span class="applied-chip chip-applied">✓ Applied</span>
+        </div>
+      </div>
+      <div class="meta-row"><span>📍 Bengaluru, India</span><span>🕒 Recently</span></div>
+      <div class="desc-preview">Why this exists — What if the app that handles your home's money actually understood how homes work?…</div>
+      <div class="card-footer">
+        <a class="view-link">🔗 View Job</a>
+        <button class="apply-btn">Apply Now</button>
+      </div>
+    </div>
+    <!-- Single merged expander only -->
+    <div class="actions-expander">
+      <div class="actions-header">⚡ Actions</div>
+      <div class="tabs-row">
+        <div class="tab active">📄 Tailor Resume</div>
+        <div class="tab">✍️ Cover Letter</div>
+        <div class="tab">📖 Full JD</div>
+      </div>
+      <div class="tab-content">
+        Click <strong>✨ Create Customised Resume</strong> to tailor your resume to this role using AI.
+        <br><button class="gen-btn">✨ Create Resume</button>
+      </div>
+    </div>
+    <div class="pros-cons">
+      <div class="pros"><strong>✅ Pros</strong>Cleanest layout — 1 item below card.<br>Applied chip doesn't break flow.<br>Toggle still works on click.</div>
+      <div class="cons"><strong>⚠️ Cons</strong>Applied chip slightly less obvious than a full-width bar.</div>
+    </div>
+    <div class="rec-banner">⭐ <strong>Recommended</strong> — cuts 5 elements to 2. Applied status stays visible but doesn't dominate.</div>
+  </div>
+
+  <!-- OPTION C -->
+  <div class="option-block">
+    <div class="option-label">Option C — Compact Icon Button Row</div>
+    <div class="option-desc">No expanders at all. One compact button row below the card with 4 buttons. Click any to toggle that section open inline.</div>
+    <div class="card">
+      <div class="card-top">
+        <div class="avatar">P</div>
+        <div class="card-meta">
+          <div class="job-title">Senior Product Manager</div>
+          <div class="company">Pine Labs</div>
+          <div class="badges">
+            <span class="badge badge-easy">● Easy Apply</span>
+            <span class="badge badge-salary">Not Disclosed</span>
+          </div>
+        </div>
+      </div>
+      <div class="meta-row"><span>📍 Bengaluru, India</span><span>🕒 Recently</span></div>
+      <div class="desc-preview">Why this exists — What if the app that handles your home's money actually understood how homes work?…</div>
+      <div class="card-footer">
+        <a class="view-link">🔗 View Job</a>
+        <button class="apply-btn">Apply Now</button>
+      </div>
+    </div>
+    <!-- Compact button row -->
+    <div class="action-row">
+      <button class="action-btn applied-mini">✓ Applied</button>
+      <button class="action-btn active-section">📄 Tailor</button>
+      <button class="action-btn">✍️ Cover Letter</button>
+      <button class="action-btn">📖 JD</button>
+    </div>
+    <!-- Inline open section (Tailor is active) -->
+    <div class="open-section">
+      <div class="section-title">📄 Tailor Resume</div>
+      Click <strong>✨ Create Customised Resume</strong> to tailor your resume to this role using AI.
+      <br><br>
+      <button style="background:#1B3A6B;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">✨ Create Resume</button>
+    </div>
+    <div class="pros-cons">
+      <div class="pros"><strong>✅ Pros</strong>Fastest to scan.<br>No nested clicks.<br>Compact button row looks modern.</div>
+      <div class="cons"><strong>⚠️ Cons</strong>Multiple sections can open at once.<br>Button labels may feel cramped on mobile.</div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
