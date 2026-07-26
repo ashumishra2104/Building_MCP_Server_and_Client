@@ -4,7 +4,6 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Cover Letter – {{CANDIDATE_NAME}}</title>
-<link href="https://fonts.googleapis.com/css2?family=Calibri:wght@400;700&display=swap" rel="stylesheet"/>
 <style>
 
 /* ─── PAGE SETUP ─────────────────────────────────────────── */
@@ -27,7 +26,7 @@
 }
 
 body {
-  font-family: 'Calibri', 'Segoe UI', sans-serif;
+  font-family: Calibri, 'Segoe UI', Arial, sans-serif;
   font-size: 10.5pt;
   line-height: 1.6;
   color: var(--body);
@@ -79,11 +78,14 @@ body {
   text-align: left;
 }
 
-.contact-table td.ci {
-  width: 22px;
-  text-align: center;
-  padding-right: 5px;
-  font-size: 9pt;
+.contact-table td.ci-label {
+  width: 52px;
+  text-align: left;
+  padding-right: 8px;
+  font-size: 7.6pt;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .contact-table a {
@@ -183,7 +185,7 @@ body {
   font-size: 10.5pt;
   color: var(--body);
   line-height: 1.65;
-  text-align: justify;
+  text-align: left;
 }
 
 .body-section p strong {
@@ -302,12 +304,12 @@ body {
   </div>
   <div class="header-right">
     <table class="contact-table">
-      <tr><td class="ci">📞</td><td>{{CANDIDATE_PHONE}}</td></tr>
-      <tr><td class="ci">✉</td><td>{{CANDIDATE_EMAIL}}</td></tr>
-      <tr><td class="ci"><span class="contact-badge li">in</span></td><td><a href="{{LINKEDIN_URL}}">{{LINKEDIN_DISPLAY}}</a></td></tr>
+      <tr><td class="ci-label">Phone</td><td>{{CANDIDATE_PHONE}}</td></tr>
+      <tr><td class="ci-label">Email</td><td>{{CANDIDATE_EMAIL}}</td></tr>
+      <tr><td class="ci-label">LinkedIn</td><td><a href="{{LINKEDIN_URL}}">{{LINKEDIN_DISPLAY}}</a></td></tr>
       {{WEBSITE_ROW}}
       {{GITHUB_ROW}}
-      <tr><td class="ci">📍</td><td>{{CANDIDATE_LOCATION}}</td></tr>
+      <tr><td class="ci-label">Location</td><td>{{CANDIDATE_LOCATION}}</td></tr>
     </table>
   </div>
 </div>

@@ -168,10 +168,10 @@ def _cover_letter_tab(resume_text, full_desc, company, job_title, candidate_name
     if filled_html:
         preview_text = _extract_cover_letter_text(filled_html)
         st.markdown("---")
-        for para in preview_text.split("\n\n"):
-            para = para.strip()
-            if para:
-                st.markdown(para)
+        st.text_area(
+            "Copy-ready text (for LinkedIn messages, email, etc.)",
+            value=preview_text, height=320, key=f"cl_preview_{key_prefix}",
+        )
         st.markdown("---")
         safe_company = "".join(c for c in company if c.isalnum())
         pdf_filename = f"{candidate_name.replace(' ', '_')}_CoverLetter_{safe_company}.pdf"
@@ -334,7 +334,7 @@ def render_linkedin_card(job, idx, resume_text, candidate_name, key_prefix="l"):
 </div>
 </div></div></div>""", unsafe_allow_html=True)
 
-    lk = f"{key_prefix}_l_{idx}"
+    lk = f"{key_prefix}_l_{job_id}_{idx}"
     _actions_block(job_id, "linkedin", full_desc, company, job.get('title', ''),
                    resume_text, candidate_name, key_prefix=lk,
                    poster_name=poster_name, poster_url=poster_url)

@@ -257,10 +257,10 @@ if st.session_state.get("qa_cl_html"):
     company     = st.session_state.get("qa_cl_company", "")
     preview     = _extract_cover_letter_text(filled_html)
     with st.expander("📝 Cover Letter Preview", expanded=True):
-        for para in preview.split("\n\n"):
-            para = para.strip()
-            if para:
-                st.markdown(para)
+        st.text_area(
+            "Copy-ready text (for LinkedIn messages, email, etc.)",
+            value=preview, height=320, key="qa_cl_preview",
+        )
     st.markdown("---")
     safe_name = candidate_name.replace(" ", "_")
     safe_co   = "".join(c for c in company if c.isalnum()) or "Company"

@@ -3,495 +3,260 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Resume</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet"/>
+<title>Resume — {{FULL_NAME}}</title>
+
+<!--
+  ─────────────────────────────────────────────────────────────────────
+  ATS-SAFE RESUME TEMPLATE — RULES FOR THE AGENT FILLING THIS TEMPLATE
+  ─────────────────────────────────────────────────────────────────────
+  This template exists to survive both (a) an ATS parser extracting
+  structured fields, and (b) a human recruiter skimming for ~7 seconds.
+  When generating {{EXPERIENCE_HTML}}, {{EDUCATION_HTML}}, and
+  {{CORE_COMPETENCIES_HTML}}, follow these rules exactly:
+
+  1. SINGLE COLUMN ONLY. Never introduce CSS Grid, multi-column layout,
+     floats, or absolute positioning for structural content. Flexbox
+     "space-between" (as used in .role-header below) is fine because it
+     doesn't change DOM order — the underlying text order stays
+     title-then-date even though it renders spread apart.
+
+  2. NO ICONS, EMOJI, PHOTOS, OR BADGES. Plain text only. Icons and
+     emoji are a real parsing risk in some ATS/PDF pipelines and add
+     zero keyword value.
+
+  3. NO TABLES FOR LAYOUT. Tables are only acceptable for genuinely
+     tabular data (there is none in a resume) — never for positioning.
+
+  4. ONE BOLD LABEL PER BULLET, not scattered bold mid-sentence.
+     Pattern: <b>Label:</b> rest of the achievement in plain text.
+     This matches the docx/PDF version of this resume and keeps
+     visual scanning consistent across all generated formats.
+
+  5. JD-TAILORING TARGETS, in priority order:
+     a. {{PROFESSIONAL_SUMMARY}} — rewrite to mirror the JD's own
+        language for role scope and domain, WITHOUT inventing
+        experience. Only rephrase, never fabricate.
+     b. {{CORE_COMPETENCIES_HTML}} — reorder/select from the
+        candidate's real skill set to surface what the JD asks for
+        first. Do not add a skill the candidate has never used.
+     c. Bullet selection/order within {{EXPERIENCE_HTML}} — within
+        each role, the existing bullets may be reordered to put the
+        most JD-relevant achievement first. Bullet TEXT should only
+        be lightly reworded for vocabulary match (e.g. "adoption" →
+        "engagement and adoption") — never invent new metrics.
+     d. {{TARGET_TITLE}} — may echo the JD's exact title wording if
+        it's an honest match to the candidate's actual scope; never
+        claim a title the candidate didn't hold.
+
+  6. NEVER FABRICATE: metrics, team sizes, tools, or outcomes not
+     present in the candidate's source data. Tailoring means
+     re-emphasis and re-wording, not invention. A lower JD-match score
+     with all-true content beats a higher score with anything invented.
+
+  7. Keep total content to ~2 pages worth (roughly 1000-1200 words in
+     Professional Experience + Summary combined) for an 8+ year
+     candidate. Trim lowest-relevance bullets first if a role is
+     getting too dense, don't shrink font/margins to force a fit.
+
+  ─────────────────────────────────────────────────────────────────────
+  REQUIRED SUB-STRUCTURE FOR {{EXPERIENCE_HTML}} — repeat this block
+  once per role, in reverse-chronological order:
+
+    <div class="role-header">
+      <span class="role-title">{{Title}} — {{Company}}</span>
+      <span class="role-dates">{{StartDate}} — {{EndDate}}</span>
+    </div>
+    <div class="company-desc">{{One-line company description}}</div>
+    <div class="team-line">Team: {{N}} direct reports | Cross-functional: {{...}}</div>
+    <div class="company-desc">{{One-line role/charter description}}</div>
+    <ul class="bullets">
+      <li><b>{{Bullet Label}}:</b> {{Bullet detail sentence(s)}}</li>
+      ... (repeat per bullet, 4-6 bullets typical for a primary role)
+    </ul>
+
+  The .team-line div is OPTIONAL — omit it entirely for roles where the
+  candidate has no direct reports to state (e.g. early-career roles),
+  rather than leaving it blank.
+
+  ─────────────────────────────────────────────────────────────────────
+  REQUIRED SUB-STRUCTURE FOR {{EDUCATION_HTML}}:
+
+    <div class="edu-line">{{Degree}} — {{Institution}} | {{Year}}</div>
+    ... (repeat per degree)
+
+  ─────────────────────────────────────────────────────────────────────
+  REQUIRED SUB-STRUCTURE FOR {{CORE_COMPETENCIES_HTML}}:
+
+    <div class="skills-category">{{Category Name}}</div>
+    <div class="skills-line">{{Skill 1}} | {{Skill 2}} | {{Skill 3}} ...</div>
+    ... (repeat per category — typical categories: Technical Skills,
+         Product Management, Business Expertise. Reorder categories
+         and skills within them based on JD relevance.)
+  ─────────────────────────────────────────────────────────────────────
+-->
+
 <style>
 
-/* ─── PAGE SETUP ─────────────────────────────────────────── */
 @page {
-  size: A4;
-  margin: 14mm 16mm 14mm 16mm;
+  size: Letter;
+  margin: 0.55in 0.65in;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-  --navy:   #1B3A6B;
-  --gold:   #C8861A;
-  --dark:   #1a1a2e;
-  --body:   #2d2d3a;
-  --muted:  #6b6b7a;
-  --rule:   #d8e0ee;
-  --bg:     #ffffff;
-  --light-bg: #f0f4fb;
+  --navy: #1F3864;
+  --grey: #444444;
+  --rule: #1F3864;
 }
 
 body {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 9.5pt;
-  line-height: 1.5;
-  color: var(--body);
-  background: var(--bg);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.42;
+  color: #1a1a1a;
 }
 
 /* ─── HEADER ─────────────────────────────────────────────── */
-.header {
-  padding-bottom: 10px;
-  margin-bottom: 10px;
-  border-bottom: 3px solid var(--navy);
-}
-
 .name {
-  font-family: 'DM Serif Display', serif;
-  font-size: 28pt;
+  font-size: 20pt;
+  font-weight: 700;
   color: var(--navy);
-  letter-spacing: -0.5px;
-  line-height: 1;
+  letter-spacing: 0.5px;
 }
 
-.tagline {
-  font-size: 9.5pt;
-  font-weight: 600;
-  color: var(--gold);
-  letter-spacing: 0.8px;
+.title {
+  font-size: 11pt;
+  font-weight: 700;
+  margin-top: 2px;
   text-transform: uppercase;
-  margin-top: 4px;
-  margin-bottom: 8px;
+  letter-spacing: 0.5px;
 }
 
-/* ─── CONTACT TABLE ──────────────────────────────────────── */
-.contact-table {
-  width: 100%;
-  border-collapse: collapse;
+.contact {
+  font-size: 9pt;
+  color: var(--grey);
   margin-top: 6px;
+  line-height: 1.5;
 }
 
-.contact-table td {
-  padding: 0 10px 0 0;
-  font-size: 8.2pt;
-  color: var(--muted);
-  vertical-align: middle;
-  white-space: nowrap;
-}
-
-.contact-table td:last-child {
-  padding-right: 0;
-}
-
-.contact-badge {
-  display: inline-block;
-  padding: 2px 7px;
-  border-radius: 3px;
-  font-size: 7.8pt;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  text-decoration: none;
-  margin-right: 3px;
-  vertical-align: middle;
-}
-
-.badge-linkedin {
-  background: #0a66c2;
-  color: #ffffff;
-}
-
-.badge-github {
-  background: #6e7781;
-  color: #ffffff;
-}
-
-.badge-website {
-  background: var(--gold);
-  color: #ffffff;
-}
-
-.contact-table a {
+.contact a {
   color: var(--navy);
   text-decoration: none;
 }
 
-/* ─── SECTION HEADERS ────────────────────────────────────── */
-.section {
-  margin-bottom: 11px;
+hr.rule {
+  border: none;
+  border-top: 2px solid var(--rule);
+  margin: 10px 0 4px;
 }
 
-.section-title {
-  font-size: 8pt;
+/* ─── SECTION HEADINGS ───────────────────────────────────── */
+h2.section {
+  font-size: 11.5pt;
   font-weight: 700;
-  letter-spacing: 2px;
+  color: var(--navy);
   text-transform: uppercase;
-  color: var(--navy);
-  padding-bottom: 3px;
-  margin-bottom: 7px;
-  border-bottom: 1.5px solid var(--gold);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.section-title::before {
-  content: '';
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  background: var(--gold);
-  border-radius: 50%;
-  flex-shrink: 0;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 2px;
+  margin: 14px 0 6px;
 }
 
 /* ─── SUMMARY ────────────────────────────────────────────── */
-.summary p {
-  font-size: 9pt;
-  color: var(--body);
-  line-height: 1.6;
-}
-
-.summary p strong {
-  font-weight: 700;
-  color: var(--navy);
-}
-
-/* ─── COMPETENCY TABLE ───────────────────────────────────── */
-.competency-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.competency-table td {
-  padding: 2.5px 6px;
-  font-size: 7.8pt;
-  font-weight: 600;
-  color: var(--navy);
-  background: var(--light-bg);
-  border-left: 2.5px solid var(--gold);
-  border-radius: 2px;
-  width: 25%;
-  vertical-align: top;
-}
-
-.competency-table tr + tr td {
-  padding-top: 4px;
+p.summary {
+  text-align: left;
+  margin-bottom: 4px;
 }
 
 /* ─── EXPERIENCE ─────────────────────────────────────────── */
-.job {
-  margin-bottom: 10px;
-  page-break-inside: avoid;
-}
-
-.job-header {
+.role-header {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-bottom: 1px;
+  margin-top: 10px;
+  flex-wrap: wrap;
 }
 
-.job-title {
-  font-size: 10pt;
+.role-title {
   font-weight: 700;
-  color: var(--navy);
+  font-size: 10.5pt;
 }
 
-.job-dates {
-  font-size: 7.8pt;
-  color: var(--muted);
-  font-style: italic;
+.role-dates {
+  font-weight: 700;
+  font-size: 9.5pt;
   white-space: nowrap;
 }
 
-.job-company {
-  font-size: 8.5pt;
-  font-weight: 600;
-  color: var(--gold);
-  margin-bottom: 4px;
+.company-desc {
+  font-style: italic;
+  color: var(--grey);
+  font-size: 9.5pt;
+  margin: 2px 0;
 }
 
-.job-context {
-  font-size: 8.2pt;
-  color: var(--muted);
-  font-style: italic;
-  margin-bottom: 4px;
+.team-line {
+  font-weight: 700;
+  color: var(--navy);
+  font-size: 9.5pt;
+  margin: 2px 0 4px;
 }
 
 ul.bullets {
-  list-style: none;
-  padding: 0;
+  margin: 4px 0 8px 18px;
 }
 
 ul.bullets li {
-  font-size: 8.8pt;
-  color: var(--body);
-  line-height: 1.55;
-  padding-left: 12px;
-  position: relative;
+  margin-bottom: 6px;
+  text-align: left;
+}
+
+/* ─── EDUCATION / SKILLS ─────────────────────────────────── */
+.edu-line {
   margin-bottom: 3px;
+  font-size: 10pt;
 }
 
-ul.bullets li::before {
-  content: '▸';
-  position: absolute;
-  left: 0;
-  color: var(--gold);
-  font-size: 7pt;
-  top: 1.5px;
-}
-
-ul.bullets li .bold {
+.skills-category {
   font-weight: 700;
-  color: var(--navy);
+  font-size: 10pt;
+  margin-top: 6px;
 }
 
-/* ─── TECH LINE ──────────────────────────────────────────── */
-.tech-line {
-  margin-top: 5px;
-  font-size: 7.8pt;
-  color: var(--muted);
-}
-
-.tech-line span {
-  font-weight: 700;
-  color: var(--navy);
-}
-
-/* ─── ACHIEVEMENTS TABLE ─────────────────────────────────── */
-.achievements-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.achievements-table td {
-  padding: 4px 8px 4px 0;
-  font-size: 8.5pt;
-  color: var(--body);
-  vertical-align: top;
-  width: 50%;
-}
-
-.achievements-table td::before {
-  content: '◆ ';
-  color: var(--gold);
-  font-size: 6pt;
-  vertical-align: middle;
-}
-
-.achievements-table .label {
-  font-weight: 700;
-  color: var(--navy);
-}
-
-/* ─── SKILLS TABLE ───────────────────────────────────────── */
-.skills-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.skills-table td {
-  padding: 3px 8px;
-  font-size: 8.2pt;
-  color: var(--body);
-  vertical-align: top;
-}
-
-.skills-table .skill-category {
-  font-weight: 700;
-  color: var(--navy);
-  white-space: nowrap;
-  width: 130px;
-}
-
-/* ─── EDUCATION ──────────────────────────────────────────── */
-.edu-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 3px;
-}
-
-.edu-degree {
-  font-size: 9pt;
-  font-weight: 700;
-  color: var(--navy);
-}
-
-.edu-meta {
-  font-size: 8pt;
-  color: var(--muted);
-}
-
-.edu-school {
-  font-size: 8.2pt;
-  color: var(--gold);
-  font-weight: 600;
+.skills-line {
+  font-size: 9.5pt;
+  margin-bottom: 2px;
 }
 
 </style>
 </head>
 <body>
 
-<!-- ═══════════ HEADER ═══════════ -->
-<div class="header">
-  <div class="name">Ashu Mishra</div>
-  <div class="tagline">Senior Product Manager — B2B SaaS · AI/ML · Supply Chain &amp; IoT</div>
-
-  <table class="contact-table">
-    <tr>
-      <td>📞 +91 88826 44660</td>
-      <td>✉️ ashumishra1@outlook.com</td>
-      <td>📍 Gurgaon, India</td>
-      <td><a class="contact-badge badge-linkedin" href="https://linkedin.com/in/ashumish">in LinkedIn</a></td>
-      <!-- PORTFOLIO_GITHUB_ROW -->
-      <!-- PORTFOLIO_WEBSITE_ROW -->
-    </tr>
-  </table>
+<!-- ─────────── HEADER ─────────── -->
+<div class="name">{{FULL_NAME}}</div>
+<div class="title">{{TARGET_TITLE}}</div>
+<div class="contact">
+  {{PHONE}} &nbsp;|&nbsp; {{EMAIL}} &nbsp;|&nbsp; <a href="{{LINKEDIN_URL}}">{{LINKEDIN_DISPLAY}}</a><br/>
+  {{PORTFOLIO_ROW}}{{LOCATION}}
 </div>
+<hr class="rule"/>
 
-<!-- ═══════════ SUMMARY ═══════════ -->
-<div class="section summary">
-  <div class="section-title">Professional Summary</div>
-  <p>
-    Strategic Senior Product Manager with 7+ years driving B2B SaaS product delivery across AI/ML, fintech, and supply chain domains. Proven ability to manage technical cross-functional teams, define system architecture, and lead end-to-end product development from requirements gathering through deployment. Hands-on experience with supply chain &amp; logistics solutions at ElasticRun, AI/NLP data pipelines at Zigram, and payment orchestration at Medikabazaar. Strong track record of translating complex client requirements into scalable, production-grade product solutions in Agile environments.
-  </p>
-</div>
+<!-- ─────────── SUMMARY ─────────── -->
+<h2 class="section">Professional Summary</h2>
+<p class="summary">{{PROFESSIONAL_SUMMARY}}</p>
 
-<!-- ═══════════ COMPETENCIES ═══════════ -->
-<div class="section">
-  <div class="section-title">Core Competencies</div>
-  <table class="competency-table">
-    <tr>
-      <td>B2B SaaS Product Management</td>
-      <td>System Architecture &amp; Design</td>
-      <td>Agile / Scrum Leadership</td>
-      <td>AI/ML Product Delivery</td>
-    </tr>
-    <tr>
-      <td>Supply Chain &amp; Logistics</td>
-      <td>Technical Team Management</td>
-      <td>Client Requirements &amp; Solutioning</td>
-      <td>Product Roadmap &amp; GTM Strategy</td>
-    </tr>
-    <tr>
-      <td>Vector Databases &amp; NLP</td>
-      <td>API Integration &amp; Payments</td>
-      <td>OKRs / KPIs &amp; Data Analytics</td>
-      <td>Cross-functional Stakeholder Mgmt</td>
-    </tr>
-  </table>
-</div>
+<!-- ─────────── EXPERIENCE ─────────── -->
+<h2 class="section">Professional Experience</h2>
+{{EXPERIENCE_HTML}}
 
-<!-- ═══════════ EXPERIENCE ═══════════ -->
-<div class="section">
-  <div class="section-title">Professional Experience</div>
+<!-- ─────────── EDUCATION ─────────── -->
+<h2 class="section">Education</h2>
+{{EDUCATION_HTML}}
 
-  <!-- ZIGRAM -->
-  <div class="job">
-    <div class="job-header">
-      <div class="job-title">Technical Product Manager</div>
-      <div class="job-dates">June 2025 – Present</div>
-    </div>
-    <div class="job-company">Zigram</div>
-    <div class="job-context">AI-Driven B2B SaaS · NLP · Agentic AI · Vector Database Solutions</div>
-    <ul class="bullets">
-      <li>Architected and deployed large-scale B2B data processing pipelines for Zigram's core SaaS product; designed optimized schemas for vector and non-relational databases supporting real-time AI applications — directly contributing to <span class="bold">solutioning and system architecture decisions.</span></li>
-      <li>Built and managed production-grade NLP systems processing <span class="bold">20,000+ news articles daily</span> using Named Entity Recognition (NER); led technical teams to deliver adversarial press intelligence databases with <span class="bold">10ms–30sec vector search</span> query response times.</li>
-      <li>Pioneered AI-powered data infrastructure for PEP compliance databases, engineering schemas to handle <span class="bold">15+ million records</span> while implementing Agentic AI systems for automated web scraping, data extraction, and intelligent structuring.</li>
-      <li>Gathered and translated complex client compliance requirements into actionable product specs; managed documentation, prioritized backlogs, and ensured timely delivery through Agile sprint cycles.</li>
-    </ul>
-    <div class="tech-line"><span>Key Technologies:</span> Vector Databases · NLP/NER · Agentic AI · ML Pipelines · Real-time Data Processing · Python</div>
-  </div>
-
-  <!-- MEDIKABAZAAR -->
-  <div class="job">
-    <div class="job-header">
-      <div class="job-title">Senior Product Manager</div>
-      <div class="job-dates">Jan 2024 – June 2025</div>
-    </div>
-    <div class="job-company">Medikabazaar, Gurgaon</div>
-    <ul class="bullets">
-      <li><span class="bold">Fintech Innovation:</span> Established B2B fintech vertical with API integrations to 100+ banks and 5 major payment gateways across Dubai and India; implemented open router orchestration achieving <span class="bold">99.5% success rate</span> on 300–400 Cr monthly invoices.</li>
-      <li><span class="bold">Payment Orchestration:</span> Built intelligent routing system handling <span class="bold">1,000+ daily orders</span> using advanced data analytics to optimise payment decisions across multi-geography operations.</li>
-      <li><span class="bold">Procurement Platform:</span> Architected end-to-end B2B procurement platform with Java-based validation algorithms using Agile methodology; unlocked <span class="bold">USD 130M working capital</span> through intelligent inventory orchestration.</li>
-      <li><span class="bold">Sales Application:</span> Led ML-powered sales enrolment system managing <span class="bold">350 Cr monthly orders</span>; reduced processing time significantly through automated data mapping and semantic search.</li>
-      <li><span class="bold">Ecommerce Catalogue:</span> Engineered catalogue management platform for <span class="bold">1.1M SKUs</span> with semantic search capabilities, driving measurable PDP-to-cart conversion lift across markets.</li>
-    </ul>
-  </div>
-
-  <!-- ELASTICRUN SPM -->
-  <div class="job">
-    <div class="job-header">
-      <div class="job-title">Senior Product Manager</div>
-      <div class="job-dates">Apr 2022 – Dec 2023</div>
-    </div>
-    <div class="job-company">ElasticRun, Pune</div>
-    <ul class="bullets">
-      <li><span class="bold">Supply Chain Solutions:</span> Spearheaded reverse supply chain optimisation through process simplification and technology solutions, unlocking <span class="bold">40 Cr working capital</span> and increasing business liquidity.</li>
-      <li><span class="bold">P&amp;L Management:</span> Designed foundational P&amp;L Ecosystem leading 3 Business Analysts to establish KPIs and drive profitability across <span class="bold">20+ warehouses</span>; awarded <span class="bold">Team of the Year.</span></li>
-      <li><span class="bold">Sales Enhancement:</span> Implemented SMART Recommender, SMART Basket, and Medal Framework gamification; increased margin from <span class="bold">4.5% to 7.5%</span> and items per invoice from <span class="bold">7 to 12.</span></li>
-      <li><span class="bold">Logistics Optimisation:</span> Streamlined logistics processes through customer interviews and data analysis, achieving <span class="bold">2 Cr monthly cost savings.</span></li>
-      <li><span class="bold">Automation:</span> Deployed automated item population system in Sales App achieving <span class="bold">90% manpower reduction</span> while enhancing UX and operational efficiency.</li>
-    </ul>
-  </div>
-
-  <!-- ELASTICRUN PM -->
-  <div class="job">
-    <div class="job-header">
-      <div class="job-title">Product Manager</div>
-      <div class="job-dates">Mar 2020 – Apr 2022</div>
-    </div>
-    <div class="job-company">ElasticRun, Pune</div>
-    <ul class="bullets">
-      <li>Built comprehensive data-driven dashboards for cost analysis, establishing guidelines for <span class="bold">200 Cr/month revenue management</span> across business units.</li>
-      <li>Developed KPI monitoring application tracking daily response rates and system performance, improving operational visibility and enabling data-driven decisions.</li>
-      <li>Coordinated procurement-operations collaboration, resulting in <span class="bold">20 Cr advance payment release;</span> partnered with Sales and leadership to achieve monthly <span class="bold">5% EBITDA increase.</span></li>
-    </ul>
-  </div>
-
-  <!-- EON ELECTRIC -->
-  <div class="job">
-    <div class="job-header">
-      <div class="job-title">Procurement Engineer</div>
-      <div class="job-dates">Feb 2015 – May 2017</div>
-    </div>
-    <div class="job-company">Eon Electric Limited, Delhi</div>
-    <ul class="bullets">
-      <li>Managed procurement operations for electronic components in lighting fixtures and voltage chargers; facilitated cross-departmental collaboration across Sales, R&amp;D, Quality Assurance, and Finance.</li>
-    </ul>
-  </div>
-
-</div>
-
-<!-- ═══════════ KEY ACHIEVEMENTS ═══════════ -->
-<div class="section">
-  <div class="section-title">Key Achievements</div>
-  <table class="achievements-table">
-    <tr>
-      <td><span class="label">Revenue &amp; Payments:</span> Managed 300–400 Cr monthly invoices with 99.5% success rate across India &amp; Dubai B2B operations.</td>
-      <td><span class="label">Working Capital:</span> Unlocked USD 130M + 40 Cr through intelligent procurement and supply chain automation.</td>
-    </tr>
-    <tr>
-      <td><span class="label">AI Scale:</span> Built NLP pipelines processing 20,000+ articles/day with sub-30s vector search on 15M+ records.</td>
-      <td><span class="label">Cost Optimisation:</span> Achieved 2 Cr monthly logistics savings and 90% manpower reduction through product-led automation.</td>
-    </tr>
-  </table>
-</div>
-
-<!-- ═══════════ EDUCATION ═══════════ -->
-<div class="section">
-  <div class="section-title">Education</div>
-  <div class="edu-row">
-    <div>
-      <span class="edu-degree">PGDM (Marketing)</span>
-      <span class="edu-school"> — IMT, Ghaziabad</span>
-    </div>
-    <div class="edu-meta">2020</div>
-  </div>
-  <div class="edu-row">
-    <div>
-      <span class="edu-degree">B.Tech (Mechatronics)</span>
-      <span class="edu-school"> — UPES, Dehradun</span>
-    </div>
-    <div class="edu-meta">2015</div>
-  </div>
-</div>
+<!-- ─────────── CORE COMPETENCIES ─────────── -->
+<h2 class="section">Core Competencies</h2>
+{{CORE_COMPETENCIES_HTML}}
 
 </body>
 </html>
