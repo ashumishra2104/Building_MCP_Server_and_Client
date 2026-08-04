@@ -2,6 +2,7 @@ import streamlit as st
 from src.database import get_jobs_from_db, get_linkedin_posts_from_db, get_active_profile, get_applied_job_ids
 from src.ui_components import JOB_CARD_CSS, render_linkedin_card, render_naukri_card, render_indeed_card, render_linkedin_post_card, normalize_hashtag_source
 from src.location_utils import get_available_cities, job_matches_cities
+from src.date_utils import days_since_posted, posted_sort_key
 
 USER_EMAIL = "demo@nomail.com"
 
@@ -112,6 +113,26 @@ with col_status:
 with col_remote:
     remote_only = st.toggle("🌍 Remote only", key="filter_remote")
 
+col_sort, col_age = st.columns([1, 1])
+with col_sort:
+    sort_order = st.selectbox(
+        "🕒 Sort by",
+        options=["Newest First", "Oldest First"],
+        key="sort_order_select",
+        help="LinkedIn's posted date is approximate — reconstructed from its relative "
+             "text ('3 days ago') against the time we scraped it. Naukri and Indeed use "
+             "real posting timestamps.",
+    )
+with col_age:
+    max_age_label = st.selectbox(
+        "📅 Posted within",
+        options=["Any time", "Last 7 days", "Last 15 days", "Last 30 days"],
+        key="max_age_select",
+        help="Jobs older than this are hidden. Jobs with no parseable date are hidden "
+             "too, since they can't be confirmed as recent.",
+    )
+max_age_days = {"Any time": None, "Last 7 days": 7, "Last 15 days": 15, "Last 30 days": 30}[max_age_label]
+
 st.markdown("---")
 
 # ── Apply filters (client-side, instant) ──────────────────────────────────────
@@ -154,12 +175,31 @@ def apply_filters(jobs, title_field="title", source="linkedin"):
         filtered = [j for j in filtered if _job_id(j, source) not in applied_ids]
     return filtered
 
+def apply_date_sort(jobs, source):
+    """Hide jobs older than max_age_days (and jobs with no parseable date, once a
+    max-age filter is active), then sort by recency per sort_order."""
+    working = jobs
+    if max_age_days is not None:
+        working = [j for j in working
+                   if (lambda d: d is not None and d <= max_age_days)(days_since_posted(j, source))]
+    newest_first = (sort_order == "Newest First")
+    return sorted(working, key=lambda j: posted_sort_key(j, source, newest_first))
+
 filtered_linkedin = apply_filters(linkedin_jobs, title_field="title",        source="linkedin")
 filtered_naukri   = apply_filters(naukri_jobs,   title_field="title",        source="naukri")
 filtered_indeed   = apply_filters(indeed_jobs,   title_field="positionName", source="indeed")
+
+filtered_linkedin = apply_date_sort(filtered_linkedin, "linkedin")
+filtered_naukri   = apply_date_sort(filtered_naukri,   "naukri")
+filtered_indeed   = apply_date_sort(filtered_indeed,   "indeed")
+
 filtered_all      = [(j, "linkedin") for j in filtered_linkedin] + \
                     [(j, "naukri")   for j in filtered_naukri]   + \
                     [(j, "indeed")   for j in filtered_indeed]
+filtered_all = sorted(
+    filtered_all,
+    key=lambda pair: posted_sort_key(pair[0], pair[1], sort_order == "Newest First"),
+)
 
 
 # ── Pagination helper ──────────────────────────────────────────────────────────
@@ -271,9 +311,11 @@ tab_naukri, tab_linkedin, tab_indeed, tab_all, tab_posts = st.tabs([
     "📢 Posts",
 ])
 
+date_sig = f"{sort_order}|{max_age_label}"
+
 with tab_naukri:
     st.caption(f"{len(filtered_naukri)} jobs")
-    show_paginated(filtered_naukri, "naukri", key_prefix="sn", extra_sig=str(remote_only))
+    show_paginated(filtered_naukri, "naukri", key_prefix="sn", extra_sig=f"{remote_only}|{date_sig}")
 
 with tab_linkedin:
     poster_only = st.toggle("👤 Only show jobs with poster info", key="filter_poster")
@@ -285,15 +327,15 @@ with tab_linkedin:
     else:
         display_linkedin = filtered_linkedin
     st.caption(f"{len(display_linkedin)} jobs")
-    show_paginated(display_linkedin, "linkedin", key_prefix="sl", extra_sig=f"{poster_only}|{remote_only}")
+    show_paginated(display_linkedin, "linkedin", key_prefix="sl", extra_sig=f"{poster_only}|{remote_only}|{date_sig}")
 
 with tab_indeed:
     st.caption(f"{len(filtered_indeed)} jobs")
-    show_paginated(filtered_indeed, "indeed", key_prefix="si", extra_sig=str(remote_only))
+    show_paginated(filtered_indeed, "indeed", key_prefix="si", extra_sig=f"{remote_only}|{date_sig}")
 
 with tab_all:
     st.caption(f"{len(filtered_all)} jobs")
-    show_paginated(filtered_all, "all", key_prefix="sa", extra_sig=str(remote_only))
+    show_paginated(filtered_all, "all", key_prefix="sa", extra_sig=f"{remote_only}|{date_sig}")
 
 with tab_posts:
     st.caption(f"{len(filtered_posts)} posts")
