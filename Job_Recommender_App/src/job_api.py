@@ -38,9 +38,11 @@ def fetch_linkedin_jobs(search_query, location="india", rows=60):
         save_jobs_to_db("linkedin", search_query, jobs)
         return jobs
     except ApifyApiError as e:
+        print(f"[LinkedIn] ApifyApiError: {e}")
         _show_apify_error("LinkedIn", str(e))
         return []
     except Exception as e:
+        print(f"[LinkedIn] Unexpected error: {type(e).__name__}: {e}")
         st.error(f"Unexpected error fetching LinkedIn jobs: {e}")
         return []
 
@@ -65,9 +67,11 @@ def fetch_naukri_jobs(search_query, rows=60, deep_scan=False):
 
         return jobs
     except ApifyApiError as e:
+        print(f"[Naukri] ApifyApiError: {e}")
         _show_apify_error("Naukri", str(e))
         return []
     except Exception as e:
+        print(f"[Naukri] Unexpected error: {type(e).__name__}: {e}")
         st.error(f"Unexpected error fetching Naukri jobs: {e}")
         return []
 
@@ -121,9 +125,11 @@ def fetch_indeed_jobs(search_query, location="India", country="IN", rows=50):
         save_jobs_to_db("indeed", search_query, jobs)
         return jobs
     except ApifyApiError as e:
+        print(f"[Indeed] ApifyApiError: {e}")
         _show_apify_error("Indeed", str(e))
         return []
     except Exception as e:
+        print(f"[Indeed] Unexpected error: {type(e).__name__}: {e}")
         st.error(f"Unexpected error fetching Indeed jobs: {e}")
         return []
 
@@ -171,14 +177,20 @@ def fetch_linkedin_posts(max_results=30):
 
 
 def fetch_poster_email(profile_url: str) -> str:
-    """Return email for a LinkedIn profile URL, or empty string on failure."""
+    """Return a *verified* email for a LinkedIn profile URL, or empty string if
+    none was found or the only candidate was an unverified catch-all guess."""
     try:
         client = _get_apify_client()
-        run = client.actor("anchor/linkedin-to-email").call(
-            run_input={"startUrls": [{"url": profile_url}]}
+        run = client.actor("pequod-labs/linkedin-profile-verified-email").call(
+            run_input={"profileUrls": [profile_url], "findEmail": True}
         )
         items = list(client.dataset(run["defaultDatasetId"]).iterate_items())
-        return (items[0].get("email") or "") if items else ""
+        if not items:
+            return ""
+        item = items[0]
+        if item.get("emailConfidence") == "verified":
+            return item.get("email") or ""
+        return ""
     except Exception as e:
         print(f"fetch_poster_email error: {e}")
         return ""

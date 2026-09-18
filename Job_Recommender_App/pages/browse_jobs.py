@@ -1,3 +1,5 @@
+import concurrent.futures
+
 import streamlit as st
 from src.database import get_jobs_from_db, get_linkedin_posts_from_db, get_active_profile, get_applied_job_ids
 from src.ui_components import JOB_CARD_CSS, render_linkedin_card, render_naukri_card, render_indeed_card, render_linkedin_post_card, normalize_hashtag_source
@@ -5,6 +7,8 @@ from src.location_utils import get_available_cities, job_matches_cities
 from src.date_utils import days_since_posted, posted_sort_key
 
 USER_EMAIL = "demo@nomail.com"
+INITIAL_JOBS_LIMIT = 300
+LOAD_MORE_STEP = 300
 
 # ── Auto-load active profile into session if resume not already set ────────────
 if not st.session_state.get("resume_text"):
@@ -54,18 +58,25 @@ st.caption("All jobs loaded directly from your database — no API calls needed.
 resume_text    = st.session_state.get("resume_text", "")
 candidate_name = (st.session_state.get("candidate_name", "Candidate") or "Candidate").strip().split('\n')[0]
 
-# ── Load jobs once into session state ──────────────────────────────────────────
-if "db_linkedin_jobs" not in st.session_state:
-    with st.spinner("Loading LinkedIn jobs..."):
-        st.session_state["db_linkedin_jobs"] = get_jobs_from_db("linkedin", limit=2000)
+# ── Load jobs into session state (parallel fetch, capped limit, on cold start) ──
+for _src in ("linkedin", "naukri", "indeed"):
+    st.session_state.setdefault(f"limit_{_src}", INITIAL_JOBS_LIMIT)
 
-if "db_naukri_jobs" not in st.session_state:
-    with st.spinner("Loading Naukri jobs..."):
-        st.session_state["db_naukri_jobs"] = get_jobs_from_db("naukri", limit=2000)
+_missing_sources = [
+    src for src in ("linkedin", "naukri", "indeed")
+    if f"db_{src}_jobs" not in st.session_state
+]
 
-if "db_indeed_jobs" not in st.session_state:
-    with st.spinner("Loading Indeed jobs..."):
-        st.session_state["db_indeed_jobs"] = get_jobs_from_db("indeed", limit=2000)
+if _missing_sources:
+    with st.spinner(f"Loading {', '.join(s.capitalize() for s in _missing_sources)} jobs..."):
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(_missing_sources)) as _executor:
+            _future_map = {
+                _executor.submit(get_jobs_from_db, src, limit=st.session_state[f"limit_{src}"]): src
+                for src in _missing_sources
+            }
+            for _future in concurrent.futures.as_completed(_future_map):
+                _src = _future_map[_future]
+                st.session_state[f"db_{_src}_jobs"] = _future.result()
 
 if "db_linkedin_posts" not in st.session_state:
     with st.spinner("Loading LinkedIn posts..."):
@@ -76,12 +87,20 @@ naukri_jobs     = st.session_state["db_naukri_jobs"]
 indeed_jobs     = st.session_state["db_indeed_jobs"]
 linkedin_posts  = st.session_state["db_linkedin_posts"]
 
-# ── Build city list from ALL loaded jobs (self-updating) ───────────────────────
+# ── Build city list from ALL currently loaded jobs (self-updating) ─────────────
 all_jobs_flat = linkedin_jobs + naukri_jobs + indeed_jobs
-if "available_cities" not in st.session_state:
-    st.session_state["available_cities"] = get_available_cities(all_jobs_flat)
+available_cities = get_available_cities(all_jobs_flat)
 
-available_cities = st.session_state["available_cities"]
+
+def render_load_more(source, label):
+    """Shows a 'Load more' button when the DB may hold more rows than we've loaded."""
+    current_limit = st.session_state[f"limit_{source}"]
+    loaded = st.session_state[f"db_{source}_jobs"]
+    if len(loaded) >= current_limit:
+        if st.button(f"⬇️ Load {LOAD_MORE_STEP} more {label} jobs", key=f"load_more_{source}"):
+            st.session_state[f"limit_{source}"] = current_limit + LOAD_MORE_STEP
+            st.session_state.pop(f"db_{source}_jobs", None)
+            st.rerun()
 
 # ── Filters row ───────────────────────────────────────────────────────────────
 col_title, col_city = st.columns([2, 3])
@@ -100,7 +119,7 @@ col_refresh, col_status, col_remote = st.columns([1, 3, 1])
 with col_refresh:
     if st.button("🔄 Refresh DB"):
         for key in ("db_linkedin_jobs", "db_naukri_jobs", "db_indeed_jobs", "db_linkedin_posts",
-                    "available_cities", "applied_job_ids"):
+                    "applied_job_ids", "limit_linkedin", "limit_naukri", "limit_indeed"):
             st.session_state.pop(key, None)
         st.rerun()
 with col_status:
@@ -315,6 +334,7 @@ date_sig = f"{sort_order}|{max_age_label}"
 
 with tab_naukri:
     st.caption(f"{len(filtered_naukri)} jobs")
+    render_load_more("naukri", "Naukri")
     show_paginated(filtered_naukri, "naukri", key_prefix="sn", extra_sig=f"{remote_only}|{date_sig}")
 
 with tab_linkedin:
@@ -327,10 +347,12 @@ with tab_linkedin:
     else:
         display_linkedin = filtered_linkedin
     st.caption(f"{len(display_linkedin)} jobs")
+    render_load_more("linkedin", "LinkedIn")
     show_paginated(display_linkedin, "linkedin", key_prefix="sl", extra_sig=f"{poster_only}|{remote_only}|{date_sig}")
 
 with tab_indeed:
     st.caption(f"{len(filtered_indeed)} jobs")
+    render_load_more("indeed", "Indeed")
     show_paginated(filtered_indeed, "indeed", key_prefix="si", extra_sig=f"{remote_only}|{date_sig}")
 
 with tab_all:
